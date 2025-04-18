@@ -38,17 +38,18 @@
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
-                    background-color: rgba(255, 255, 255, 0.8);
+                    background-color: rgba(255, 255, 255, 0.2);
                     padding: 20px;
                     border-radius: 10px;
                     text-align: center;
                     z-index: 10;
                     width: 300px;
                     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                    backdrop-filter: blur(5px);
                 }
                 
                 .author-info-box.dark-mode {
-                    background-color: rgba(0, 0, 0, 0.7);
+                    background-color: rgba(0, 0, 0, 0.2);
                     color: #fff;
                 }
                 
@@ -67,9 +68,9 @@
                 }
                 
                 .author-name {
-                    font-size: 18px;
+                    font-size: 20px;
                     font-weight: bold;
-                    margin-bottom: 5px;
+                    margin-bottom: 10px;
                 }
                 
                 .author-description {
@@ -77,34 +78,7 @@
                     line-height: 1.5;
                     margin-bottom: 10px;
                 }
-                
-                .author-data {
-                    display: flex;
-                    justify-content: space-around;
-                    margin-top: 10px;
-                }
-                
-                .data-item {
-                    text-align: center;
-                }
-                
-                .data-item .headline {
-                    font-size: 12px;
-                    color: #666;
-                }
-                
-                .dark-mode .data-item .headline {
-                    color: #ccc;
-                }
-                
-                .data-item .number {
-                    font-size: 16px;
-                    font-weight: bold;
-                }
                 </style>
-
-                <h1 id="site-title">May your return be graced</h1>
-                <h1 id="site-title">  with the reunion of those who matter most.</h1>
 
                 <!-- 添加的作者信息模块 -->
                 <div class="author-info-box" id="author-info-box">
@@ -113,28 +87,6 @@
                     </div>
                     <div class="author-name"><?php $this->author(); ?></div>
                     <div class="author-description"><?php $this->options->author_description() ?></div>
-                    <div class="author-data">
-                        <div class="data-item">
-                            <div class="headline">文章</div>
-                            <div class="number">
-                                <?php Typecho_Widget::widget('Widget_Stat')->to($stat); ?>
-                                <?php $stat->publishedPostsNum() ?>
-                            </div>
-                        </div>
-                        <div class="data-item">
-                            <div class="headline">标签</div>
-                            <div class="number">
-                                <?php echo tagsNum(); ?>
-                            </div>
-                        </div>
-                        <div class="data-item">
-                            <div class="headline">分类</div>
-                            <div class="number">
-                                <?php Typecho_Widget::widget('Widget_Stat')->to($stat); ?>
-                                <?php $stat->categoriesNum() ?>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <script>
@@ -150,12 +102,6 @@
                     }
                 });
                 </script>
-
-                <!-- <h1 id="site-title"><?php $this->options->description() ?></h1> -->
-                <!--注释掉副标题
-            <div id="site-subtitle">
-                <span id="subtitle"></span>
-            </div>-->
             </div>
             <div id="scroll-down"><i class="fas fa-angle-down scroll-down-effects"></i></div>
             <?php else : ?>
