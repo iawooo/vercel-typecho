@@ -2208,3 +2208,46 @@ img[data-lazy-src]:not(.loaded) {
     margin: 0 auto;
     height: auto !important;
 }
+
+/* 确保加载覆盖层在需要时能被正确隐藏 */
+#loading-overlay {
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.5s ease;
+}
+
+#loading-overlay.hide {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    display: none !important;
+}
+
+/* 防止无痕浏览模式下页面被模糊 */
+html, body {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+body {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* 防止页面意外模糊 */
+#body-wrap {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* 确保元素可以正常点击 */
+a, button, input, textarea, select {
+    pointer-events: auto !important;
+}
+
+/* 修复可能的定位问题 */
+#loading-overlay {
+    will-change: opacity;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
