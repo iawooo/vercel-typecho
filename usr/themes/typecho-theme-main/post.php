@@ -59,17 +59,26 @@
     <article class="post-content" id="article-container">
       <?php
       $db = Typecho_Db::get();
-      $sql = $db->select()->from('table.comments')
-        ->where('cid = ?', $this->cid)
-        ->where('mail = ?', $this->remember('mail', true))
-        ->limit(1);
-      $result = $db->fetchAll($sql);
-      if ($this->user->hasLogin() || $result) {
-        $content = preg_replace("/\[hide\](.*?)\[\/hide\]/sm", '<div class="reply-content">$1</div>', $this->content);
-      } else {
-        $content = preg_replace("/\[hide\](.*?)\[\/hide\]/sm", '<p class="need-reply">此处内容 <a href="#comments">回复</a> 可见</p>', $this->content);
+      $dbType = explode('_', $db->getAdapterName())[0];
+      
+      try {
+          // 使用数据库无关的查询方式
+          $sql = $db->select()->from('table.comments')
+            ->where('cid = ?', $this->cid)
+            ->where('mail = ?', $this->remember('mail', true))
+            ->limit(1);
+          $result = $db->fetchAll($sql);
+          
+          if ($this->user->hasLogin() || $result) {
+            $content = preg_replace("/\[hide\](.*?)\[\/hide\]/sm", '<div class="reply-content">$1</div>', $this->content);
+          } else {
+            $content = preg_replace("/\[hide\](.*?)\[\/hide\]/sm", '<p class="need-reply">此处内容 <a href="#comments">回复</a> 可见</p>', $this->content);
+          }
+          echo $content;
+      } catch (Exception $e) {
+          // 出错时显示原始内容
+          echo $this->content;
       }
-      echo $content;
       ?>
     </article>
     <div class="post-copyright">
