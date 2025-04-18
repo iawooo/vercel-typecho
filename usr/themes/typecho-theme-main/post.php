@@ -64,9 +64,19 @@
       try {
           // 使用数据库无关的查询方式
           $sql = $db->select()->from('table.comments')
-            ->where('cid = ?', $this->cid)
-            ->where('mail = ?', $this->remember('mail', true))
-            ->limit(1);
+            ->where('cid = ?', $this->cid);
+            
+          // 对邮箱进行特殊处理，避免PostgreSQL区分大小写的问题
+          $userMail = $this->remember('mail', true);
+          if ($userMail) {
+              if ($dbType === 'Pgsql') {
+                  $sql->where('LOWER(mail) = LOWER(?)', $userMail);
+              } else {
+                  $sql->where('mail = ?', $userMail);
+              }
+          }
+          
+          $sql->limit(1);
           $result = $db->fetchAll($sql);
           
           if ($this->user->hasLogin() || $result) {
@@ -76,8 +86,11 @@
           }
           echo $content;
       } catch (Exception $e) {
-          // 出错时显示原始内容
+          // 出错时显示原始内容，并在开发环境显示错误信息
           echo $this->content;
+          if (defined('__TYPECHO_DEBUG__') && __TYPECHO_DEBUG__) {
+              echo '<div class="error-message">错误: ' . $e->getMessage() . '</div>';
+          }
       }
       ?>
     </article>
@@ -194,7 +207,10 @@
           <span>相关推荐</span>
         </div>
         <div class="relatedPosts-list">
-          <?php $this->related($this->options->RelatedPostsNum)->to($relatedPosts); ?>
+          <?php 
+          // 使用自定义的相关文章函数替代原来的related方法
+          $relatedPosts = new RelatedPostsWidget(getRelatedPosts($this, $this->options->RelatedPostsNum)); 
+          ?>
           <?php while ($relatedPosts->next()) : ?><div><a href="<?php $relatedPosts->permalink(); ?>" title="<?php $relatedPosts->title(); ?>"><img class="cover" data-lazy-src="<?php echo get_ArticleThumbnail($relatedPosts); ?>" src="<?php echo GetLazyLoad() ?>" alt="cover">
                 <div class="content is-center">
                   <div class="date"><i class="far fa-calendar-alt fa-fw"></i> <?php $relatedPosts->date('Y-m-d'); ?></div>
