@@ -1,105 +1,162 @@
 /**
- * 修复点击事件问题的CSS
- * 这个文件会覆盖所有可能阻止点击事件的样式
+ * 紧急修复点击事件问题的CSS
+ * 采用激进方法修复整个页面无法点击的问题
  */
 
-/* 全局重置 - 确保所有元素可点击 */
+/* 全局强制可点击 */
 * {
     pointer-events: auto !important;
+    user-select: auto !important;
+    touch-action: auto !important;
 }
 
-/* 确保基本元素可点击并且没有固定位置的覆盖层 */
-html, body {
+/* 特别处理html和body */
+html,
+body {
     pointer-events: auto !important;
-    position: relative; /* 防止fixed定位元素影响点击 */
+    touch-action: auto !important;
+    overflow: auto !important;
+    width: auto !important;
+    height: auto !important;
+    position: relative !important;
+    z-index: auto !important;
 }
 
-/* 清除可能的全屏覆盖层 */
-body::before, body::after {
+/* 移除任何全屏覆盖层 */
+body::before,
+body::after,
+html::before,
+html::after,
+#body-wrap::before,
+#body-wrap::after {
     content: none !important;
     display: none !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
 }
 
-/* 确保内容包装器可点击和正确定位 */
-#body-wrap, #content-inner, #page {
+/* 确保所有重要容器可点击 */
+#body-wrap,
+#content-inner,
+#page,
+.layout,
+.recent-posts,
+.recent-post-item,
+#aside-content,
+.card-widget,
+.pagination,
+.post-content,
+#article-container,
+.comments,
+article,
+section,
+div {
     pointer-events: auto !important;
-    position: relative;
-    z-index: 1;
-    overflow: visible; /* 确保内容不被隐藏 */
+    position: relative !important;
+    z-index: auto !important;
+    touch-action: auto !important;
 }
 
-/* 确保页面内容区域正常交互 */
-.layout, .recent-posts, .recent-post-item,
-#aside-content, .card-widget, .pagination,
-.post-content, #article-container, .comments,
-article, section, div {
-    pointer-events: auto !important;
-}
-
-/* 确保所有交互元素可点击 */
-a, button, input, textarea, select,
-.site-page, .menus_item, .menus_item_child li, 
-.search-form-input, .dark-light-com {
+/* 强制所有交互元素可点击 */
+a,
+button,
+input,
+textarea,
+select,
+.site-page,
+.menus_item,
+.menus_item_child li,
+.search-form-input,
+.dark-light-com,
+[onclick],
+[role="button"],
+[tabindex],
+label {
     cursor: pointer !important;
     pointer-events: auto !important;
-    position: relative; /* 提高元素在z轴上的层级 */
-    z-index: 2; /* 确保高于可能的覆盖层 */
+    position: relative !important;
+    z-index: 999 !important; /* 使用较高z-index确保可点击 */
+    touch-action: auto !important;
 }
 
-/* 确保导航栏可点击和正确层级 */
-#nav, #menus, #page-header, .menus_items {
+/* 强制导航栏可点击 */
+#nav,
+#menus,
+#page-header,
+.menus_items,
+#toggle-menu,
+.site-page {
     pointer-events: auto !important;
-    position: relative;
-    z-index: 10;
+    z-index: 1000 !important;
+    position: relative !important;
+    touch-action: auto !important;
 }
 
-/* 修复搜索对话框层级 */
-#search-mask {
-    z-index: 99;
-    position: fixed;
-    pointer-events: auto !important; /* 搜索遮罩需要能够接收点击事件以便关闭 */
-}
-
+/* 修正搜索弹窗和侧边栏 */
+#search-mask,
 #local-search {
-    z-index: 100;
-    position: fixed;
+    z-index: 9999 !important;
+    position: fixed !important;
 }
 
 .search-dialog {
-    position: relative;
-    z-index: 101;
+    z-index: 10000 !important;
+    position: relative !important;
 }
 
-/* 修复侧边栏菜单层级 */
 #sidebar {
-    position: fixed;
-    z-index: 90;
+    z-index: 9990 !important;
+    position: fixed !important;
 }
 
 #sidebar-menus {
-    position: fixed;
-    z-index: 91;
+    z-index: 9991 !important;
+    position: fixed !important;
 }
 
 #menu-mask {
-    position: fixed;
-    z-index: 89;
-    pointer-events: auto !important; /* 菜单遮罩需要能够接收点击事件以便关闭 */
+    z-index: 9989 !important;
+    position: fixed !important;
 }
 
-/* 重置可能影响点击事件的属性 */
-body, html, #body-wrap {
-    touch-action: auto !important; /* 允许触摸事件 */
-}
-
-/* 修复移动触控事件 */
+/* 修复移动端触控事件 */
 @media (max-width: 768px) {
     * {
         touch-action: auto !important;
     }
     
     body {
-        overflow-x: hidden !important; /* 防止横向滚动但允许纵向滚动 */
+        overflow-x: hidden !important;
         overflow-y: auto !important;
     }
+    
+    a, button, .site-page, input[type="submit"], input[type="button"] {
+        touch-action: manipulation !important; /* 优化移动端触摸体验 */
+    }
+}
+
+/* 强制使所有可能阻塞点击的元素失效 */
+[style*="pointer-events: none"],
+[style*="pointer-events:none"] {
+    pointer-events: auto !important;
+}
+
+/* 特别处理可能存在的loading或overlay元素 */
+.loading-overlay,
+.overlay,
+.mask,
+.loading,
+.preloader,
+.loader,
+#loading,
+#overlay,
+[class*="loading"],
+[class*="overlay"],
+[id*="loading"],
+[id*="overlay"] {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
 } 
