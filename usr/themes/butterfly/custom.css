@@ -21,24 +21,24 @@
     width: 100%;
 }
 
-/* 作者信息框样式 */
+/* 作者信息框样式 - 完全透明版本 */
 .author-info-box {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: transparent !important; /* 移除背景色 */
     padding: 20px;
     border-radius: 10px;
     text-align: center;
     z-index: 10;
     width: 300px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(5px);
+    box-shadow: none !important; /* 移除阴影 */
+    backdrop-filter: none !important; /* 移除模糊效果 */
 }
 
 .author-info-box.dark-mode {
-    background-color: rgba(0, 0, 0, 0.2);
+    background-color: transparent !important;
     color: #fff;
 }
 
@@ -48,6 +48,7 @@
     border-radius: 50%;
     margin: 0 auto 10px;
     overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); /* 为头像添加轻微阴影 */
 }
 
 .author-avatar img {
@@ -57,15 +58,17 @@
 }
 
 .author-name {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
     margin-bottom: 10px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* 添加文字阴影提高可读性 */
 }
 
 .author-description {
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.5;
     margin-bottom: 10px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* 添加文字阴影提高可读性 */
 }
 
 /* 搜索框样式 */
@@ -183,4 +186,22 @@
     .search-dialog {
         width: 90%;
     }
+}
+
+/* 确保页面内容可点击 */
+body {
+    position: relative;
+    pointer-events: auto !important;
+}
+
+#body-wrap {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto !important;
+}
+
+/* 确保所有链接和按钮可点击 */
+a, button, .menus_item, .site-page, input, textarea, select {
+    pointer-events: auto !important;
+    cursor: pointer;
 } 
