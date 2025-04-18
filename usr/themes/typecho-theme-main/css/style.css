@@ -236,14 +236,14 @@
     display: none;
 }
 
-.commments-info {
+.commcomments-info {
     padding: 10px;
 }
-.commments-info > input {
+.commcomments-info > input {
     color: var(--text-highlight-color);
 }
 
-.commments-area {
+.commcomments-area {
     border: 1px solid #f0f0f0;
     border-radius: 5px;
 }
@@ -748,3 +748,25 @@ pre[class*="language-"] {
 /*    -ms-transform-origin: 0 50%;*/
 /*    transform-origin: 0 50%;*/
 /*}*/
+
+/* 确保图片清晰度 */
+img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    -ms-interpolation-mode: nearest-neighbor;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+}
+
+/* 修复可能的缩放问题 */
+body {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 确保页面元素渲染清晰 */
+* {
+    box-sizing: border-box;
+    max-width: 100%;
+}
