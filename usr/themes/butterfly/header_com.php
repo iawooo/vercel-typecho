@@ -181,7 +181,7 @@
             root: "/",
             algolia: void 0,
             localSearch: {
-                path: undefined,
+                path: "search.xml",
                 languages: {
                     hits_empty: "回车查询：${query}"
                 }
@@ -684,7 +684,7 @@
                     </a>
                 </div>
                 <div class="menus_item">
-                    <a class="site-page search search-form-input search-btn">
+                    <a class="site-page search search-form-input search-btn" id="search-button">
                         <i class="fas fa-search fa-fw"></i>
                         <form method="post" action="<?php $this->options->siteUrl(); ?>" role="search" id="dSearch" style="display:inline;">
                             搜索
