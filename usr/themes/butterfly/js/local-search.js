@@ -1,6 +1,6 @@
 /**
- * 增强版本地搜索功能
- * 提供更好的错误处理和数据格式兼容性
+ * 本地搜索功能
+ * 支持XML输入数据并增强错误处理
  */
 
 // 全局变量
@@ -10,7 +10,7 @@ let searchTimer = null;
 
 // 配置
 const CONFIG = {
-  // 搜索数据路径
+  // 搜索数据路径 - 默认改为 search.xml
   path: (document.getElementById('search-path') || { dataset: { path: '/search.xml' } }).dataset.path,
   // 内容长度
   contentLength: 380,
@@ -24,12 +24,16 @@ const CONFIG = {
  * @param {Error|null} error 错误对象
  */
 function showSearchError(message, error = null) {
-  const searchResultsContainer = document.getElementById('local-search-results');
-  if (searchResultsContainer) {
-    if (error) {
-      console.error(message, error);
+  try {
+    const searchResultsContainer = document.getElementById('local-search-results');
+    if (searchResultsContainer) {
+      if (error) {
+        console.error(message, error);
+      }
+      searchResultsContainer.innerHTML = `<div class="search-error"><p>${message}</p></div>`;
     }
-    searchResultsContainer.innerHTML = `<div class="search-error"><p>${message}</p></div>`;
+  } catch (e) {
+    console.error("显示搜索错误时发生异常:", e);
   }
 }
 
@@ -41,7 +45,8 @@ function openSearch() {
     // 获取搜索对话框
     const searchDialog = document.getElementById('local-search');
     if (!searchDialog) {
-      throw new Error('搜索对话框不存在');
+      console.warn('搜索对话框元素 #local-search 不存在');
+      return; // 提前返回，防止后续错误
     }
 
     // 显示搜索对话框
@@ -52,13 +57,19 @@ function openSearch() {
     const searchInput = document.getElementById('local-search-input');
     if (searchInput) {
       setTimeout(() => {
-        searchInput.focus();
+        try {
+          searchInput.focus();
+        } catch (focusError) {
+          console.warn("聚焦搜索输入框时出错:", focusError);
+        }
         
         // 加载搜索数据
         if (!searchData) {
           loadSearchData();
         }
       }, 100);
+    } else {
+        console.warn('搜索输入框元素 #local-search-input 不存在');
     }
 
     // 添加ESC关闭事件
@@ -87,6 +98,7 @@ function closeSearch() {
     // 获取搜索对话框
     const searchDialog = document.getElementById('local-search');
     if (!searchDialog) {
+        console.warn('尝试关闭不存在的搜索对话框 #local-search');
       return;
     }
 
@@ -125,6 +137,8 @@ function loadSearchData() {
     const searchStatus = document.getElementById('search-status');
     if (searchStatus) {
       searchStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 加载数据中...';
+    } else {
+        console.warn('搜索状态元素 #search-status 不存在');
     }
 
     // 获取搜索路径
@@ -181,6 +195,9 @@ function loadSearchData() {
  */
 function parseSearchData(data) {
   try {
+    if (!data || data.trim() === '') {
+      throw new Error('接收到的搜索数据为空');
+    }
     // 尝试解析XML
     if (data.trim().startsWith('<?xml') || data.trim().startsWith('<search>')) {
       return parseXMLData(data);
@@ -188,13 +205,17 @@ function parseSearchData(data) {
     
     // 尝试解析JSON
     try {
-      return JSON.parse(data);
+      const jsonData = JSON.parse(data);
+      if (!Array.isArray(jsonData)) {
+        throw new Error('JSON数据不是数组格式');
+      }
+      return jsonData;
     } catch (jsonError) {
-      throw new Error(`数据格式无效: ${jsonError.message}`);
+      throw new Error(`数据格式无效，既不是有效的XML也不是JSON: ${jsonError.message}`);
     }
   } catch (error) {
     console.error('解析搜索数据失败:', error);
-    throw error;
+    throw error; // 重新抛出错误，让调用者处理
   }
 }
 
@@ -211,10 +232,15 @@ function parseXMLData(xmlData) {
     // 检查解析错误
     const parserError = xmlDoc.querySelector('parsererror');
     if (parserError) {
-      throw new Error('XML解析错误: ' + parserError.textContent);
+      console.error('XML 解析错误详情:', parserError.textContent);
+      throw new Error('XML解析错误');
     }
     
     const entries = xmlDoc.querySelectorAll('entry');
+    if (entries.length === 0) {
+      console.warn('XML数据中未找到 <entry> 元素');
+      return []; // 返回空数组，而不是抛出错误
+    }
     const results = [];
     
     entries.forEach(entry => {
@@ -237,7 +263,7 @@ function parseXMLData(xmlData) {
     return results;
   } catch (error) {
     console.error('解析XML搜索数据失败:', error);
-    throw error;
+    throw error; // 重新抛出错误
   }
 }
 
@@ -250,10 +276,14 @@ function parseXMLData(xmlData) {
 function highlightKeyword(text, keyword) {
   if (!keyword || !text) return text;
   
-  const escapeRegex = str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(escapeRegex(keyword), 'gi');
-  
-  return text.replace(regex, match => `<span class="search-keyword">${match}</span>`);
+  try {
+    const escapeRegex = str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapeRegex(keyword), 'gi');
+    return text.replace(regex, match => `<span class="search-keyword">${match}</span>`);
+  } catch (error) {
+    console.warn("高亮关键词时出错:", error);
+    return text;
+  }
 }
 
 /**
@@ -266,26 +296,44 @@ function extractContext(content, keyword) {
   if (!keyword || !content) return '';
   
   const contentLength = CONFIG.contentLength;
-  const keywordPosition = content.toLowerCase().indexOf(keyword.toLowerCase());
-  
-  if (keywordPosition < 0) return content.substring(0, contentLength);
-  
-  // 计算上下文的起始和结束位置
-  let startPos = Math.max(0, keywordPosition - Math.floor(contentLength / 2));
-  let endPos = Math.min(content.length, startPos + contentLength);
-  
-  // 确保显示完整单词
-  if (startPos > 0) {
-    startPos = content.indexOf(' ', startPos);
-    if (startPos === -1) startPos = 0;
+  try {
+    const lowerContent = content.toLowerCase();
+    const lowerKeyword = keyword.toLowerCase();
+    const keywordPosition = lowerContent.indexOf(lowerKeyword);
+    
+    if (keywordPosition < 0) {
+        // 关键词不在内容中，返回内容开头部分
+        return content.substring(0, Math.min(content.length, contentLength));
+    }
+    
+    // 计算上下文的起始和结束位置
+    let startPos = Math.max(0, keywordPosition - Math.floor(contentLength / 2));
+    let endPos = Math.min(content.length, startPos + contentLength);
+    
+    // 尝试优化上下文的起始和结束边界，使其更自然
+    // (这部分可以根据需要调整或移除)
+    if (startPos > 0) {
+      const spaceBefore = content.lastIndexOf(' ', startPos);
+      if (spaceBefore !== -1) startPos = spaceBefore + 1;
+    }
+    if (endPos < content.length) {
+        const spaceAfter = content.indexOf(' ', endPos);
+        if (spaceAfter !== -1) endPos = spaceAfter;
+    }
+    
+    // 提取上下文
+    let result = content.substring(startPos, endPos);
+    
+    // 添加省略号
+    if (startPos > 0) result = '... ' + result;
+    if (endPos < content.length) result = result + ' ...';
+    
+    return result;
+  } catch (error) {
+    console.warn("提取上下文时出错:", error);
+    // 出错时返回内容开头部分作为降级
+    return content.substring(0, Math.min(content.length, contentLength));
   }
-  
-  // 添加省略号
-  let result = content.substring(startPos, endPos);
-  if (startPos > 0) result = '... ' + result;
-  if (endPos < content.length) result = result + ' ...';
-  
-  return result;
 }
 
 /**
@@ -294,25 +342,34 @@ function extractContext(content, keyword) {
  */
 function search(keyword) {
   try {
+    const searchResults = document.getElementById('local-search-results');
+    if (!searchResults) {
+      console.error('搜索结果容器 #local-search-results 不存在');
+      return;
+    }
+
     if (!keyword) {
-      const searchResults = document.getElementById('local-search-results');
-      if (searchResults) {
-        searchResults.innerHTML = '';
-      }
+      searchResults.innerHTML = ''; // 清空结果
       return;
     }
     
     if (!searchData) {
-      loadSearchData();
+      showSearchError('搜索数据正在加载或加载失败，请稍后重试。');
+      // 尝试重新加载数据，以防第一次失败
+      if (!isSearchLoading) loadSearchData(); 
+      return;
+    }
+
+    if (searchData.length === 0) {
+      showSearchError('无可用搜索数据。');
       return;
     }
     
     // 分割关键词（支持多关键词搜索）
-    const keywords = keyword.trim().toLowerCase().split(/\s+/);
-    const searchResults = document.getElementById('local-search-results');
-    
-    if (!searchResults) {
-      throw new Error('搜索结果容器不存在');
+    const keywords = keyword.trim().toLowerCase().split(/\s+/).filter(k => k !== ''); // 过滤空关键词
+    if (keywords.length === 0) {
+        searchResults.innerHTML = ''; // 如果只有空格，也清空结果
+        return;
     }
     
     // 初始化结果HTML
@@ -321,56 +378,55 @@ function search(keyword) {
     
     // 遍历所有数据项
     for (const item of searchData) {
+      // 检查数据项是否有效
+      if (!item || typeof item.title !== 'string' || typeof item.content !== 'string' || typeof item.url !== 'string') {
+        console.warn('跳过无效的搜索数据项:', item);
+        continue;
+      }
+
       // 检查是否包含所有关键词
-      const matchTitle = keywords.every(key => item.title && item.title.toLowerCase().indexOf(key) > -1);
-      const matchContent = keywords.every(key => item.content && item.content.toLowerCase().indexOf(key) > -1);
+      const titleLower = item.title.toLowerCase();
+      const contentLower = item.content.toLowerCase();
       
-      // 如果标题或内容包含关键词
-      if (matchTitle || matchContent) {
-        matchCount++;
-        let resultItemHTML = '<div class="search-result-item">';
-        
-        // 高亮标题
-        let titleHighlighted = item.title;
-        keywords.forEach(key => {
-          titleHighlighted = highlightKeyword(titleHighlighted, key);
-        });
-        
-        // 高亮内容
-        let contentHighlighted = '';
-        if (matchContent) {
-          // 使用第一个匹配的关键词提取上下文
-          const firstMatchedKeyword = keywords.find(key => item.content.toLowerCase().indexOf(key) > -1);
-          const context = extractContext(item.content, firstMatchedKeyword);
+      const isMatch = keywords.every(key => titleLower.includes(key) || contentLower.includes(key));
+      
+      // 如果标题或内容包含所有关键词
+      if (isMatch) {
+        if (matchCount < CONFIG.maxResultLength) {
+          let resultItemHTML = '<div class="search-result-item">';
+          
+          // 高亮标题
+          let titleHighlighted = item.title;
+          keywords.forEach(key => {
+            titleHighlighted = highlightKeyword(titleHighlighted, key);
+          });
+          
+          // 高亮内容
+          // 查找第一个匹配的关键词以提取上下文
+          const firstMatchedKeyword = keywords.find(key => contentLower.includes(key) || titleLower.includes(key));
+          let contentHighlighted = extractContext(item.content, firstMatchedKeyword || keywords[0]); // 使用第一个匹配的或第一个关键词
           
           // 高亮所有关键词
-          contentHighlighted = context;
           keywords.forEach(key => {
             contentHighlighted = highlightKeyword(contentHighlighted, key);
           });
-        } else {
-          contentHighlighted = item.content.substring(0, CONFIG.contentLength);
-          if (contentHighlighted.length === CONFIG.contentLength) {
-            contentHighlighted += '...';
-          }
+          
+          // 组装结果项
+          resultItemHTML += `<a href="${item.url}" class="search-result-title">${titleHighlighted}</a>`;
+          resultItemHTML += `<div class="search-result-content">${contentHighlighted}</div>`;
+          resultItemHTML += '</div>';
+          
+          resultHTML += resultItemHTML;
         }
-        
-        // 组装结果项
-        resultItemHTML += `<a href="${item.url}" class="search-result-title">${titleHighlighted}</a>`;
-        resultItemHTML += `<div class="search-result-content">${contentHighlighted}</div>`;
-        resultItemHTML += '</div>';
-        
-        resultHTML += resultItemHTML;
-        
-        // 限制结果数量
-        if (matchCount >= CONFIG.maxResultLength) {
-          break;
-        }
+        matchCount++;
       }
     }
     
     // 显示结果
     if (matchCount > 0) {
+      if (matchCount > CONFIG.maxResultLength) {
+        resultHTML += `<div class="search-result-count">显示前 ${CONFIG.maxResultLength} 条结果，共找到 ${matchCount} 条</div>`;
+      }
       searchResults.innerHTML = resultHTML;
     } else {
       searchResults.innerHTML = '<div class="search-empty"><p>未找到相关结果，请尝试其他关键词</p></div>';
@@ -388,11 +444,11 @@ function search(keyword) {
  * @returns {Function} 防抖后的函数
  */
 function debounce(func, delay) {
-  return function() {
+  let timeoutId = null; 
+  return function(...args) {
+    clearTimeout(timeoutId);
     const context = this;
-    const args = arguments;
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
+    timeoutId = setTimeout(() => {
       func.apply(context, args);
     }, delay);
   };
@@ -407,33 +463,43 @@ function initLocalSearch() {
     const searchButton = document.getElementById('search-button');
     if (searchButton) {
       searchButton.addEventListener('click', openSearch);
+    } else {
+      console.warn('搜索按钮 #search-button 未找到');
     }
     
     // 关闭按钮点击事件
     const closeButton = document.getElementById('search-close-button');
     if (closeButton) {
       closeButton.addEventListener('click', closeSearch);
+    } else {
+       console.warn('搜索关闭按钮 #search-close-button 未找到');
     }
     
     // 搜索遮罩点击事件
     const searchMask = document.getElementById('search-mask');
     if (searchMask) {
       searchMask.addEventListener('click', closeSearch);
+    } else {
+      console.warn('搜索遮罩 #search-mask 未找到');
     }
     
     // 搜索输入框输入事件
     const searchInput = document.getElementById('local-search-input');
     if (searchInput) {
-      searchInput.addEventListener('input', debounce(function() {
+      const debouncedSearch = debounce(function() {
         search(this.value.trim());
-      }, 300));
+      }, 300);
+      searchInput.addEventListener('input', debouncedSearch);
       
       // 回车键搜索
       searchInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
+          e.preventDefault(); // 阻止表单默认提交行为
           search(this.value.trim());
         }
       });
+    } else {
+      console.warn('搜索输入框 #local-search-input 未找到');
     }
     
     console.log('本地搜索功能初始化成功');
