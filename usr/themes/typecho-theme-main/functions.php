@@ -1017,14 +1017,26 @@ function onlinePeople() {
 function get_post_view($archive) {
     $db = Typecho_Db::get();
     $dbType = explode('_', $db->getAdapterName())[0];
+    $isPostgreSQL = ($dbType === 'Pgsql' || $dbType === 'Pdo' && strpos($db->getAdapterName(), 'Pgsql') !== false);
     $cid = $archive->cid;
+    $prefix = $db->getPrefix();
     
-    if(!array_key_exists('views', $db->fetchRow($db->select()->from('table.contents')->page(1, 1)))) {
-        $db->query('ALTER TABLE `' . $db->getPrefix() . 'contents` ADD `views` INT(10) DEFAULT 0;');
+    // 检查views列是否存在
+    try {
+        $db->fetchRow($db->select('views')->from('table.contents')->page(1, 1));
+    } catch (Exception $e) {
+        // 列不存在，尝试创建
+        if ($isPostgreSQL) {
+            // PostgreSQL 添加列语法
+            $db->query('ALTER TABLE "' . $prefix . 'contents" ADD COLUMN "views" INTEGER DEFAULT 0');
+        } else {
+            // MySQL 添加列语法
+            $db->query('ALTER TABLE `' . $prefix . 'contents` ADD `views` INT(10) DEFAULT 0');
+        }
     }
     
     $row = $db->fetchRow($db->select('views')->from('table.contents')->where('cid = ?', $cid));
-    $views = $row['views'];
+    $views = isset($row['views']) ? $row['views'] : 0;
     
     if ($archive->is('single')) {
         $cookie = Typecho_Cookie::get('contents_views');
@@ -1032,7 +1044,7 @@ function get_post_view($archive) {
         if (!in_array($cid, $cookie)) {
             $views = $views + 1;
             
-            if ($dbType === 'Pgsql') {
+            if ($isPostgreSQL) {
                 $db->query($db->update('table.contents')->rows(array('views' => $views))->where('"cid" = ?', $cid));
             } else {
                 $db->query($db->update('table.contents')->rows(array('views' => $views))->where('cid = ?', $cid));
@@ -1054,12 +1066,24 @@ function get_post_view($archive) {
 function theAllViews() {
     $db = Typecho_Db::get();
     $dbType = explode('_', $db->getAdapterName())[0];
+    $isPostgreSQL = ($dbType === 'Pgsql' || $dbType === 'Pdo' && strpos($db->getAdapterName(), 'Pgsql') !== false);
+    $prefix = $db->getPrefix();
     
-    if(!array_key_exists('views', $db->fetchRow($db->select()->from('table.contents')->page(1, 1)))) {
-        $db->query('ALTER TABLE `' . $db->getPrefix() . 'contents` ADD `views` INT(10) DEFAULT 0;');
+    // 检查views列是否存在
+    try {
+        $db->fetchRow($db->select('views')->from('table.contents')->page(1, 1));
+    } catch (Exception $e) {
+        // 列不存在，尝试创建
+        if ($isPostgreSQL) {
+            // PostgreSQL 添加列语法
+            $db->query('ALTER TABLE "' . $prefix . 'contents" ADD COLUMN "views" INTEGER DEFAULT 0');
+        } else {
+            // MySQL 添加列语法
+            $db->query('ALTER TABLE `' . $prefix . 'contents` ADD `views` INT(10) DEFAULT 0');
+        }
     }
     
-    if ($dbType === 'Pgsql') {
+    if ($isPostgreSQL) {
         $row = $db->fetchRow($db->select('SUM("views") AS views')->from('table.contents'));
     } else {
         $row = $db->fetchRow($db->select('SUM(views) AS views')->from('table.contents'));
@@ -1086,65 +1110,63 @@ class myyodux
 }
 
 /**
- * 获取上一篇文章
+ * 上一篇
  */
-function thePrevCid($widget, $default = NULL) {
+function thePrevCid($widget, $default = NULL)
+{
     $db = Typecho_Db::get();
     $dbType = explode('_', $db->getAdapterName())[0];
     
-    if ($dbType === 'Pgsql') {
-        $query = $db->select()->from('table.contents')
-            ->where('"type" = ?', 'post')
-            ->where('"status" = ?', 'publish')
-            ->where('"created" < ?', $widget->created)
-            ->order('"created"', Typecho_Db::SORT_DESC)
+    try {
+        $where = 'table.contents.status = "publish" AND table.contents.created < ?';
+        if ($dbType === 'Pgsql') {
+            $where = 'table.contents.status = \'publish\' AND table.contents.created < ?';
+        }
+        
+        $sql = $db->select()->from('table.contents')
+            ->where($where, $widget->created)
+            ->where('table.contents.type = ?', $widget->type)
+            ->order('table.contents.created', Typecho_Db::SORT_DESC)
             ->limit(1);
-    } else {
-        $query = $db->select()->from('table.contents')
-            ->where('type = ?', 'post')
-            ->where('status = ?', 'publish')
-            ->where('created < ?', $widget->created)
-            ->order('created', Typecho_Db::SORT_DESC)
-            ->limit(1);
-    }
-    
-    $content = $db->fetchRow($query);
-    
-    if ($content) {
-        return $content['cid'];
-    } else {
+        $content = $db->fetchRow($sql);
+        
+        if ($content) {
+            return $content["cid"];
+        } else {
+            return $default;
+        }
+    } catch (Exception $e) {
         return $default;
     }
 }
 
 /**
- * 获取下一篇文章
+ * 下一篇
  */
-function theNextCid($widget, $default = NULL) {
+function theNextCid($widget, $default = NULL)
+{
     $db = Typecho_Db::get();
     $dbType = explode('_', $db->getAdapterName())[0];
     
-    if ($dbType === 'Pgsql') {
-        $query = $db->select()->from('table.contents')
-            ->where('"type" = ?', 'post')
-            ->where('"status" = ?', 'publish')
-            ->where('"created" > ?', $widget->created)
-            ->order('"created"', Typecho_Db::SORT_ASC)
+    try {
+        $where = 'table.contents.status = "publish" AND table.contents.created > ?';
+        if ($dbType === 'Pgsql') {
+            $where = 'table.contents.status = \'publish\' AND table.contents.created > ?';
+        }
+        
+        $sql = $db->select()->from('table.contents')
+            ->where($where, $widget->created)
+            ->where('table.contents.type = ?', $widget->type)
+            ->order('table.contents.created', Typecho_Db::SORT_ASC)
             ->limit(1);
-    } else {
-        $query = $db->select()->from('table.contents')
-            ->where('type = ?', 'post')
-            ->where('status = ?', 'publish')
-            ->where('created > ?', $widget->created)
-            ->order('created', Typecho_Db::SORT_ASC)
-            ->limit(1);
-    }
-    
-    $content = $db->fetchRow($query);
-    
-    if ($content) {
-        return $content['cid'];
-    } else {
+        $content = $db->fetchRow($sql);
+        
+        if ($content) {
+            return $content["cid"];
+        } else {
+            return $default;
+        }
+    } catch (Exception $e) {
         return $default;
     }
 }
@@ -1158,63 +1180,95 @@ function get_last_update()
     $now = time();
     $db = Typecho_Db::get();
     $dbType = explode('_', $db->getAdapterName())[0];
+    $isPostgreSQL = ($dbType == 'Pgsql' || $dbType == 'Postgresql' || $dbType == 'Pdo' && strpos($db->getAdapterName(), 'Pgsql') !== false);
     $prefix = $db->getPrefix();
     
     try {
-        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
-            // PostgreSQL兼容语法
-            $create = $db->fetchRow($db->select('created')->from('table.contents')->where('type = ? AND status = ?', $type, $status)->order('created', Typecho_Db::SORT_DESC)->limit(1));
-            $update = $db->fetchRow($db->select('modified')->from('table.contents')->where('type = ? AND status = ?', $type, $status)->order('modified', Typecho_Db::SORT_DESC)->limit(1));
+        if ($isPostgreSQL) {
+            // PostgreSQL兼容语法，使用双引号标识符
+            $create = $db->fetchRow($db->select('"created"')->from('table.contents')
+                ->where('type = ? AND status = ?', $type, $status)
+                ->order('"created"', Typecho_Db::SORT_DESC)
+                ->limit(1));
+            $update = $db->fetchRow($db->select('"modified"')->from('table.contents')
+                ->where('type = ? AND status = ?', $type, $status)
+                ->order('"modified"', Typecho_Db::SORT_DESC)
+                ->limit(1));
         } else {
-            $create = $db->fetchRow($db->select('created')->from('table.contents')->where('table.contents.type=? and status=?', $type, $status)->order('created', Typecho_Db::SORT_DESC)->limit($num));
-            $update = $db->fetchRow($db->select('modified')->from('table.contents')->where('table.contents.type=? and status=?', $type, $status)->order('modified', Typecho_Db::SORT_DESC)->limit($num));
+            // MySQL语法
+            $create = $db->fetchRow($db->select('created')->from('table.contents')
+                ->where('table.contents.type=? and status=?', $type, $status)
+                ->order('created', Typecho_Db::SORT_DESC)
+                ->limit($num));
+            $update = $db->fetchRow($db->select('modified')->from('table.contents')
+                ->where('table.contents.type=? and status=?', $type, $status)
+                ->order('modified', Typecho_Db::SORT_DESC)
+                ->limit($num));
         }
         
-        if ($create >= $update) {
-            echo Typecho_I18n::dateWord(isset($create['created']), $now);
-        } else {
-            $lastModified = $now - $update['modified'];
-            $timeIntervals = [
-                31536000 => '年',
-                2592000 => '个月',
-                86400 => '天',
-                3600 => '小时',
-                60 => '分钟',
-                1 => '秒'
-            ];
-            foreach ($timeIntervals as $interval => $label) {
-                if ($lastModified > $interval) {
-                    $value = floor($lastModified / $interval);
-                    echo $value . ' ' . $label . '前';
-                    break;
+        if (isset($create['created']) && isset($update['modified'])) {
+            if ($create['created'] >= $update['modified']) {
+                echo Typecho_I18n::dateWord($create['created'], $now);
+            } else {
+                $lastModified = $now - $update['modified'];
+                $timeIntervals = [
+                    31536000 => '年',
+                    2592000 => '个月',
+                    86400 => '天',
+                    3600 => '小时',
+                    60 => '分钟',
+                    1 => '秒'
+                ];
+                foreach ($timeIntervals as $interval => $label) {
+                    if ($lastModified > $interval) {
+                        $value = floor($lastModified / $interval);
+                        echo $value . ' ' . $label . '前';
+                        break;
+                    }
                 }
             }
+        } else {
+            echo '未知'; // 未找到记录
         }
     } catch (Exception $e) {
         echo '未知'; // 出错时返回未知
     }
 }
+
 //文章阅读时间统计
 function art_time($cid)
 {
     $db = Typecho_Db::get();
     $dbType = explode('_', $db->getAdapterName())[0];
+    $isPostgreSQL = ($dbType == 'Pgsql' || $dbType == 'Postgresql' || $dbType == 'Pdo' && strpos($db->getAdapterName(), 'Pgsql') !== false);
     
     try {
-        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
-            // PostgreSQL兼容语法
-            $rs = $db->fetchRow($db->select('"text"')->from('table.contents')->where('cid = ?', $cid)->order('cid', Typecho_Db::SORT_ASC)->limit(1));
+        if ($isPostgreSQL) {
+            // PostgreSQL兼容语法，使用双引号标识符
+            $rs = $db->fetchRow($db->select('"text"')->from('table.contents')
+                ->where('cid = ?', $cid)
+                ->order('"cid"', Typecho_Db::SORT_ASC)
+                ->limit(1));
         } else {
-            $rs = $db->fetchRow($db->select('table.contents.text')->from('table.contents')->where('table.contents.cid=?', $cid)->order('table.contents.cid', Typecho_Db::SORT_ASC)->limit(1));
+            // MySQL语法
+            $rs = $db->fetchRow($db->select('table.contents.text')->from('table.contents')
+                ->where('table.contents.cid=?', $cid)
+                ->order('table.contents.cid', Typecho_Db::SORT_ASC)
+                ->limit(1));
         }
         
-        $text = preg_replace("/[^\x{4e00}-\x{9fa5}]/u", "", $rs['text']);
-        $text_word = mb_strlen($text, 'utf-8');
-        echo ceil($text_word / 400);
+        if (isset($rs['text'])) {
+            $text = preg_replace("/[^\x{4e00}-\x{9fa5}]/u", "", $rs['text']);
+            $text_word = mb_strlen($text, 'utf-8');
+            echo ceil($text_word / 400);
+        } else {
+            echo '1'; // 未找到文章内容
+        }
     } catch (Exception $e) {
         echo '1'; // 出错时返回1分钟
     }
 }
+
 // 自定义编辑器
 Typecho_Plugin::factory('admin/write-post.php')->bottom = array('editor', 'reset');
 Typecho_Plugin::factory('admin/write-page.php')->bottom = array('editor', 'reset');
@@ -1456,4 +1510,144 @@ function darkTimeFunc()
     }
     $timeSlot = explode('-', $time);
     echo "e <= $timeSlot[0] || e >= $timeSlot[1]";
+}
+
+/**
+ * 获取相关文章（PostgreSQL兼容版本）
+ * 
+ * @param object $widget 当前文章Widget对象
+ * @param int $limit 获取数量
+ * @return array 相关文章数组
+ */
+function getRelatedPosts($widget, $limit = 5) {
+    $db = Typecho_Db::get();
+    $dbAdapter = $db->getAdapterName();
+    $isPostgreSQL = ($dbAdapter == 'Pdo_Pgsql');
+    
+    // 创建基本SQL查询，根据数据库类型调整
+    if ($isPostgreSQL) {
+        // PostgreSQL语法
+        $sql = $db->select()->from('table.contents')
+            ->where('status = ?', 'publish')
+            ->where('type = ?', 'post')
+            ->where('cid <> ?', $widget->cid)
+            ->limit($limit)
+            ->order('RANDOM()');  // PostgreSQL支持RANDOM()
+    } else {
+        // MySQL语法
+        $sql = $db->select()->from('table.contents')
+            ->where('status = ?', 'publish')
+            ->where('type = ?', 'post')
+            ->where('cid <> ?', $widget->cid)
+            ->limit($limit)
+            ->order('RAND()');  // MySQL使用RAND()
+    }
+    
+    // 获取当前文章的标签
+    $tags = array();
+    if ($widget->tags) {
+        foreach ($widget->tags as $tag) {
+            $tags[] = $tag['name'];
+        }
+    }
+    
+    // 如果有标签，尝试根据标签查找相关文章
+    if (!empty($tags)) {
+        $resultTags = array();
+        foreach ($tags as $tag) {
+            // 使用参数化查询避免SQL注入
+            $queryTag = $db->select('cid')
+                ->from('table.relationships')
+                ->join('table.metas', 'table.relationships.mid = table.metas.mid')
+                ->where('table.metas.type = ?', 'tag');
+                
+            // PostgreSQL中LIKE比较可能区分大小写，使用ILIKE进行不区分大小写的比较
+            if ($isPostgreSQL) {
+                $queryTag->where('table.metas.name ILIKE ?', '%' . $tag . '%');
+            } else {
+                $queryTag->where('table.metas.name LIKE ?', '%' . $tag . '%');
+            }
+            
+            $resultTagsQuery = $db->fetchAll($queryTag);
+            foreach ($resultTagsQuery as $row) {
+                if ($row['cid'] != $widget->cid) {  // 排除当前文章
+                    $resultTags[] = $row['cid'];
+                }
+            }
+        }
+        
+        // 如果找到了相关文章
+        if (count($resultTags) > 0) {
+            $resultTags = array_unique($resultTags);  // 去重
+            shuffle($resultTags);  // 随机排序
+            $resultTags = array_slice($resultTags, 0, $limit);  // 限制数量
+            
+            // 使用安全的参数化查询
+            $placeholders = implode(',', array_fill(0, count($resultTags), '?'));
+            
+            if ($isPostgreSQL) {
+                $sql = $db->select()->from('table.contents')
+                    ->where('status = ?', 'publish')
+                    ->where('type = ?', 'post')
+                    ->where('cid <> ?', $widget->cid)
+                    ->where('cid IN (' . $placeholders . ')')
+                    ->limit($limit);
+                if (!empty($resultTags)) {
+                    $sql->order('RANDOM()');
+                }
+            } else {
+                $sql = $db->select()->from('table.contents')
+                    ->where('status = ?', 'publish')
+                    ->where('type = ?', 'post')
+                    ->where('cid <> ?', $widget->cid)
+                    ->where('cid IN (' . $placeholders . ')')
+                    ->limit($limit);
+                if (!empty($resultTags)) {
+                    $sql->order('RAND()');
+                }
+            }
+            
+            // 添加参数值
+            $sql = $db->query($sql, $resultTags);
+        }
+    }
+    
+    $result = $db->fetchAll($sql);
+    return $result;
+}
+
+// 创建一个模拟Typecho内置Widget的类，用于保持兼容性
+class RelatedPostsWidget extends Typecho_Widget {
+    private $relatedPosts = array();
+    private $current = -1;
+    private $count = 0;
+    
+    public function __construct($relatedPosts) {
+        $this->relatedPosts = $relatedPosts;
+        $this->count = count($relatedPosts);
+    }
+    
+    public function next() {
+        $this->current++;
+        return $this->current < $this->count;
+    }
+    
+    public function permalink() {
+        $permalink = Typecho_Router::url('post', array('cid' => $this->relatedPosts[$this->current]['cid']), 
+                     Typecho_Common::url('', Helper::options()->index));
+        echo $permalink;
+    }
+    
+    public function title() {
+        echo $this->relatedPosts[$this->current]['title'];
+    }
+    
+    public function date($format) {
+        echo date($format, $this->relatedPosts[$this->current]['created']);
+    }
+    
+    // 获取当前文章对象
+    public function getCurrent() {
+        return $this->relatedPosts[$this->current];
+    }
 }
