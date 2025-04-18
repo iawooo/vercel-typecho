@@ -104,6 +104,8 @@
     <!--<link rel="stylesheet" href="https://gcore.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css">-->
     <link rel="stylesheet" href="<?php $this->options->themeUrl('index.css?v1.7.3'); ?>">
     <link rel="stylesheet" href="<?php $this->options->themeUrl('css/style.css?v1.7.8'); ?>">
+    <!-- 自定义CSS文件 - 用于头图样式调整 -->
+    <link rel="stylesheet" href="<?php $this->options->themeUrl('custom.css'); ?>">
     <!--魔改美化-->
     <?php if (!empty($this->options->beautifyBlock) && in_array('ShowBeautifyChange', $this->options->beautifyBlock)) : ?>
         <link rel="stylesheet" href="<?php $this->options->themeUrl('css/custom.css?v1.5.9'); ?>">
@@ -576,6 +578,30 @@
 </head>
 
 <body>
+    <!-- 搜索对话框 -->
+    <div id="search-mask" style="display: none;"></div>
+    <div id="local-search" style="display: none;">
+        <div class="search-dialog">
+            <div class="search-nav">
+                <span class="search-dialog-title">本地搜索</span>
+                <span class="search-close-button"><i class="fas fa-times"></i></span>
+            </div>
+            <div id="local-search-input">
+                <div class="local-search-box">
+                    <input class="local-search-box--input" placeholder="请输入搜索内容..." type="text">
+                </div>
+            </div>
+            <hr>
+            <div id="local-search-results">
+                <div id="loading-status"><i class="fas fa-spinner fa-pulse"></i></div>
+                <div id="loading-database" style="display: none;">
+                    <i class="fas fa-spinner fa-pulse"></i>
+                    <span>加载本地搜索数据库中...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script src="<?php $this->options->themeUrl('/js/main.js?v1.7.3'); ?>"> </script>
     <script src="<?php $this->options->themeUrl('/js/utils.js?v1.7.3'); ?>"> </script>
     <script src="<?php $this->options->themeUrl('/js/tw_cn.js?v1.7.3'); ?>"> </script>
@@ -682,11 +708,9 @@
                     </a>
                 </div>
                 <div class="menus_item">
-                    <a class="site-page search search-form-input search-btn">
+                    <a class="site-page search-form-input" id="search-button">
                         <i class="fas fa-search fa-fw"></i>
-                        <form method="post" action="<?php $this->options->siteUrl(); ?>" role="search" id="dSearch" style="display:inline;">
-                            搜索
-                        </form>
+                        <span>搜索</span>
                     </a>
                 </div>
                 <div class="menus_item">
@@ -772,9 +796,32 @@
     <!--移动导航栏-->
     <script>
         $(document).ready(function() {
-            $('.search-btn').on('click', function() {
-                $('#sidebar-menus').removeClass('open'); // 假设 'open' 类控制着侧栏的显示
-                $('#menu-mask').hide(); // 如果有遮罩层，也需要隐藏
+            // 修复搜索按钮功能
+            $(".search-form-input").on('click', function() {
+                const openSearch = () => {
+                    const bodyStyle = document.body.style;
+                    bodyStyle.width = '100%';
+                    bodyStyle.overflow = 'hidden';
+                    $("#search-mask").fadeIn();
+                    $("#local-search").fadeIn();
+                    setTimeout(() => { $('#local-search-input input').focus() }, 100);
+                };
+                
+                // 关闭侧边栏(如果是手机端)
+                $('#sidebar-menus').removeClass('open');
+                $('#menu-mask').hide();
+                
+                // 打开搜索框
+                openSearch();
+            });
+            
+            // 关闭搜索框
+            $(".search-close-button, #search-mask").on('click', function() {
+                const bodyStyle = document.body.style;
+                bodyStyle.width = '';
+                bodyStyle.overflow = '';
+                $("#local-search").fadeOut();
+                $("#search-mask").fadeOut();
             });
         });
     </script>
