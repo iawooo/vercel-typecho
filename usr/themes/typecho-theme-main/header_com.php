@@ -324,117 +324,90 @@
         </style>
     </noscript>
     <script>
-        (e => {
-            e.saveToLocal = {
-                    set: (e, t, a) => {
-                        if (0 === a) return;
-                        const o = {
-                            value: t,
-                            expiry: Date.now() + 864e5 * a
-                        };
-                        localStorage.setItem(e, JSON.stringify(o))
-                    },
-                    get: e => {
-                        const t = localStorage.getItem(e);
-                        if (!t) return;
-                        const a = JSON.parse(t);
-                        if (!(Date.now() > a.expiry)) return a.value;
-                        localStorage.removeItem(e)
-                    }
-                },
-                e.getScript = (e, t = {}) => new Promise(((a, o) => {
-                    const c = document.createElement("script");
-                    c.src = e, c.async = !0, c.onerror = o, c.onload = c.onreadystatechange = function() {
-                        const e = this.readyState;
-                        e && "loaded" !== e && "complete" !== e || (c.onload = c.onreadystatechange = null,
-                            a())
-                    }, Object.keys(t).forEach((e => {
-                        c.setAttribute(e, t[e])
-                    })), document.head.appendChild(c)
-                })),
-                e.getCSS = (e, t = !1) => new Promise(((a, o) => {
-                    const c = document.createElement("link");
-                    c.rel = "stylesheet", c.href = e, t && (c.id = t), c.onerror = o, c.onload = c
-                        .onreadystatechange = function() {
-                            const e = this.readyState;
-                            e && "loaded" !== e && "complete" !== e || (c.onload = c.onreadystatechange = null,
-                                a())
-                        }, document.head.appendChild(c)
-                })),
-                e.activateDarkMode = () => {
-                    document.documentElement.setAttribute("data-theme", "dark"), null !== document.querySelector(
-                            'meta[name="theme-color"]') && document.querySelector('meta[name="theme-color"]')
-                        .setAttribute("content", "#0d0d0d")
-                    var headerImg = document.querySelector('#page-header.full_page');
-                    //切换深色模式背景图
-                    if (headerImg) {
-                        headerImg.style.backgroundImage = "url(<?php $this->options->headerblackimg() ?>)";
-                    }
-                    //切换深色模式头像
-                    if (document.getElementById('img_hover')) {
-                        document.getElementById('img_hover').src = "https://s2.loli.net/2024/02/17/h41rvlyxgLnmcJK.jpg";
-                    }
-                    //切换黑色评论区
-                    document.querySelectorAll("iframe.giscus-frame")?.forEach(frame => {
-                        frame.contentWindow.postMessage({
-                                giscus: {
-                                    setConfig: {
-                                        theme: "dark",
-                                    },
-                                },
-                            },
-                            "https://giscus.app"
-                        );
-                    });
-                },
-                e.activateLightMode = () => {
-                    document.documentElement.setAttribute("data-theme", "light"), null !== document.querySelector(
-                            'meta[name="theme-color"]') && document.querySelector('meta[name="theme-color"]')
-                        .setAttribute("content", "#ffffff")
-                    var headerImg = document.querySelector('#page-header.full_page');
-                    //切换浅色模式背景图
-                    if (headerImg) {
-                        headerImg.style.backgroundImage = "url(<?php $this->options->headerimg() ?>)";
-                    }
-                    //切换浅色模式头像
-                    if (document.getElementById('img_hover')) {
-                        document.getElementById('img_hover').src = document.getElementById('img_hover').dataset.lazySrc;
-                    }
-                    //切换浅色评论区
-                    document.querySelectorAll("iframe.giscus-frame")?.forEach(frame => {
-                        frame.contentWindow.postMessage({
-                                giscus: {
-                                    setConfig: {
-                                        theme: "light",
-                                    },
-                                },
-                            },
-                            "https://giscus.app"
-                        );
-                    });
-                };
-            const t = saveToLocal.get("theme"),
-                a = <?php $this->options->darkModeSelect() ?> === 4,
-                o = <?php $this->options->darkModeSelect() ?> === 1,
-                c = <?php $this->options->darkModeSelect() ?> === 2,
-                n = !a && !o && !c;
-            if (void 0 === t) {
-                if (o) activateLightMode();
-                else if (a) activateDarkMode();
-                else if (n) {
-                    const e = (new Date).getHours();
-                    <?php darkTimeFunc() ?> ? activateDarkMode() : activateLightMode()
+        // 初始化lottie动画和添加事件监听
+        document.addEventListener("DOMContentLoaded", function(event) {
+            try {
+                var animation = lottie.loadAnimation({
+                    container: document.getElementById('lottie-animation'),
+                    path: '/usr/themes/butterfly/img/loadingBlue.json',
+                    renderer: 'svg',
+                    loop: true,
+                    autoplay: true,
+                });
+            } catch(e) {
+                console.error('Lottie animation failed to load:', e);
+            }
+            
+            // 添加强制关闭按钮事件监听
+            document.getElementById('force-close-loading').addEventListener('click', function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) {
+                    overlay.classList.add('hide');
+                    overlay.style.opacity = '0';
+                    overlay.style.display = 'none';
                 }
-                window.matchMedia("(prefers-color-scheme: dark)").addListener((e => {
-                    void 0 === saveToLocal.get("theme") && (e.matches ? activateDarkMode() :
-                        activateLightMode())
-                }))
-            } else "light" === t ? activateLightMode() : activateDarkMode();
-            const d = saveToLocal.get("aside-status");
-            void 0 !== d && ("hide" === d ? document.documentElement.classList.add("hide-aside") : document
-                .documentElement.classList.remove("hide-aside"));
-            /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent) && document.documentElement.classList.add("apple")
-        })(window)
+            });
+            
+            // 确保在所有浏览环境下都能移除加载覆盖层
+            setTimeout(function() {
+                var overlay = document.getElementById('loading-overlay');
+                if (overlay) {
+                    overlay.classList.add('hide');
+                    overlay.style.opacity = '0';
+                    overlay.style.display = 'none';
+                }
+            }, 3000); // 3秒后强制移除
+        });
+
+        // 页面加载完成事件
+        window.addEventListener('load', function() {
+            var overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.classList.add('hide');
+                overlay.style.opacity = '0';
+                overlay.style.display = 'none';
+            }
+            
+            // 检查页面上是否存在一个ID为 'typed' 的元素
+            var typedElement = document.getElementById('typed');
+            if (typedElement) {
+                try {
+                    // 如果存在，那么就启动打字机动画
+                    var postTitle = "<?php echo addslashes($this->title()); ?>"; // 使用 addslashes 来处理标题中可能含有的单引号或双引号
+                    var options = {
+                        strings: [postTitle],
+                        typeSpeed: 80,
+                        backSpeed: 25,
+                        startDelay: 500,
+                        cursorChar: '😐', // 光标字符
+                        onComplete: function(self) {
+                            // 打字完成后将光标字符改为 '😀'
+                            var cursor = document.querySelector('.typed-cursor');
+                            if (cursor) {
+                                cursor.textContent = '😀'; // 更新光标的文本内容
+                            }
+                        }
+                    };
+                    var typed = new Typed('#typed', options); // 使用 '#typed' 作为选择器来匹配 ID
+                } catch(e) {
+                    console.error('Typed animation failed to load:', e);
+                }
+            }
+        });
+
+        // 确保页面始终可以交互
+        document.addEventListener('readystatechange', function() {
+            if (document.readyState === 'interactive' || document.readyState === 'complete') {
+                setTimeout(function() {
+                    var overlay = document.getElementById('loading-overlay');
+                    if (overlay) {
+                        overlay.classList.add('hide');
+                        overlay.style.opacity = '0';
+                        overlay.style.display = 'none';
+                    }
+                }, 2000);
+            }
+        });
     </script>
 
     <!--额外的-->
@@ -548,6 +521,7 @@
 <body>
     <div id="loading-overlay">
         <div id="lottie-animation" style="width: 30%; height: 30%;"></div>
+        <button id="force-close-loading" style="position: absolute; bottom: 20px; padding: 10px 20px; background: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">强制关闭加载层</button>
     </div>
     <style>
         #loading-overlay {
@@ -559,57 +533,30 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            backdrop-filter: blur(5px);
-            /* 高斯模糊 */
+            background-color: rgba(255, 255, 255, 0.8);
             z-index: 9999;
+            transition: opacity 0.5s;
+        }
+        
+        [data-theme="dark"] #loading-overlay {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        
+        #loading-overlay.hide {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            display: none !important;
+        }
+        
+        #force-close-loading {
+            z-index: 10000;
+        }
+        
+        [data-theme="dark"] #force-close-loading {
+            background: #333;
+            color: #fff;
         }
     </style>
-    <script>
-        document.addEventListener("DOMContentLoaded", function(event) {
-            var animation = lottie.loadAnimation({
-                container: document.getElementById('lottie-animation'),
-                path: '/usr/themes/butterfly/img/loadingBlue.json',
-                renderer: 'svg', // Required
-                loop: true, // Optional
-                autoplay: true, // Optional
-            });
-
-            window.onload = function() {
-                // 确保所有资源包括图片都加载完成
-                document.getElementById('loading-overlay').style.opacity = '0';
-                setTimeout(function() {
-                    document.getElementById('loading-overlay').style.display = 'none';
-
-                    // 检查页面上是否存在一个ID为 'typed' 的元素
-                    var typedElement = document.getElementById('typed');
-                    if (typedElement) {
-                        // 如果存在，那么就启动打字机动画
-                        var postTitle =
-                            "<?php echo addslashes($this->title()); ?>"; // 使用 addslashes 来处理标题中可能含有的单引号或双引号
-                        var options = {
-                            strings: [postTitle],
-                            typeSpeed: 80,
-                            backSpeed: 25,
-                            startDelay: 500,
-                            cursorChar: '😐', // 光标字符
-                            onComplete: function(self) {
-                                // 打字完成后将光标字符改为 '😀'
-                                var cursor = document.querySelector('.typed-cursor');
-                                if (cursor) {
-                                    cursor.textContent = '😀'; // 更新光标的文本内容
-                                }
-                            }
-                        };
-                        var typed = new Typed('#typed', options); // 使用 '#typed' 作为选择器来匹配 ID
-                        console.log({
-                            typed
-                        });
-                        console.log('typed初始化');
-                    }
-                }, 500);
-            };
-        });
-    </script>
     <script src="<?php $this->options->themeUrl('/js/main.js?v1.7.3'); ?>"> </script>
     <script src="<?php $this->options->themeUrl('/js/utils.js?v1.7.3'); ?>"> </script>
     <script src="<?php $this->options->themeUrl('/js/tw_cn.js?v1.7.3'); ?>"> </script>
@@ -812,3 +759,120 @@
             });
         });
     </script>
+    <script>
+        // 主题的暗色/亮色模式切换功能
+        (e => {
+            e.saveToLocal = {
+                    set: (e, t, a) => {
+                        if (0 === a) return;
+                        const o = {
+                            value: t,
+                            expiry: Date.now() + 864e5 * a
+                        };
+                        localStorage.setItem(e, JSON.stringify(o))
+                    },
+                    get: e => {
+                        const t = localStorage.getItem(e);
+                        if (!t) return;
+                        const a = JSON.parse(t);
+                        if (!(Date.now() > a.expiry)) return a.value;
+                        localStorage.removeItem(e)
+                    }
+                },
+                e.getScript = (e, t = {}) => new Promise(((a, o) => {
+                    const c = document.createElement("script");
+                    c.src = e, c.async = !0, c.onerror = o, c.onload = c.onreadystatechange = function() {
+                        const e = this.readyState;
+                        e && "loaded" !== e && "complete" !== e || (c.onload = c.onreadystatechange = null,
+                            a())
+                    }, Object.keys(t).forEach((e => {
+                        c.setAttribute(e, t[e])
+                    })), document.head.appendChild(c)
+                })),
+                e.getCSS = (e, t = !1) => new Promise(((a, o) => {
+                    const c = document.createElement("link");
+                    c.rel = "stylesheet", c.href = e, t && (c.id = t), c.onerror = o, c.onload = c
+                        .onreadystatechange = function() {
+                            const e = this.readyState;
+                            e && "loaded" !== e && "complete" !== e || (c.onload = c.onreadystatechange = null,
+                                a())
+                        }, document.head.appendChild(c)
+                })),
+                e.activateDarkMode = () => {
+                    document.documentElement.setAttribute("data-theme", "dark"), null !== document.querySelector(
+                            'meta[name="theme-color"]') && document.querySelector('meta[name="theme-color"]')
+                        .setAttribute("content", "#0d0d0d")
+                    var headerImg = document.querySelector('#page-header.full_page');
+                    //切换深色模式背景图
+                    if (headerImg) {
+                        headerImg.style.backgroundImage = "url(<?php $this->options->headerblackimg() ?>)";
+                    }
+                    //切换深色模式头像
+                    if (document.getElementById('img_hover')) {
+                        document.getElementById('img_hover').src = "https://s2.loli.net/2024/02/17/h41rvlyxgLnmcJK.jpg";
+                    }
+                    //切换黑色评论区
+                    document.querySelectorAll("iframe.giscus-frame")?.forEach(frame => {
+                        frame.contentWindow.postMessage({
+                                giscus: {
+                                    setConfig: {
+                                        theme: "dark",
+                                    },
+                                },
+                            },
+                            "https://giscus.app"
+                        );
+                    });
+                },
+                e.activateLightMode = () => {
+                    document.documentElement.setAttribute("data-theme", "light"), null !== document.querySelector(
+                            'meta[name="theme-color"]') && document.querySelector('meta[name="theme-color"]')
+                        .setAttribute("content", "#ffffff")
+                    var headerImg = document.querySelector('#page-header.full_page');
+                    //切换浅色模式背景图
+                    if (headerImg) {
+                        headerImg.style.backgroundImage = "url(<?php $this->options->headerimg() ?>)";
+                    }
+                    //切换浅色模式头像
+                    if (document.getElementById('img_hover')) {
+                        document.getElementById('img_hover').src = document.getElementById('img_hover').dataset.lazySrc;
+                    }
+                    //切换浅色评论区
+                    document.querySelectorAll("iframe.giscus-frame")?.forEach(frame => {
+                        frame.contentWindow.postMessage({
+                                giscus: {
+                                    setConfig: {
+                                        theme: "light",
+                                    },
+                                },
+                            },
+                            "https://giscus.app"
+                        );
+                    });
+                };
+            const t = saveToLocal.get("theme"),
+                a = <?php $this->options->darkModeSelect() ?> === 4,
+                o = <?php $this->options->darkModeSelect() ?> === 1,
+                c = <?php $this->options->darkModeSelect() ?> === 2,
+                n = !a && !o && !c;
+            if (void 0 === t) {
+                if (o) activateLightMode();
+                else if (a) activateDarkMode();
+                else if (n) {
+                    const e = (new Date).getHours();
+                    <?php darkTimeFunc() ?> ? activateDarkMode() : activateLightMode()
+                }
+                window.matchMedia("(prefers-color-scheme: dark)").addListener((e => {
+                    void 0 === saveToLocal.get("theme") && (e.matches ? activateDarkMode() :
+                        activateLightMode())
+                }))
+            } else "light" === t ? activateLightMode() : activateDarkMode();
+            const d = saveToLocal.get("aside-status");
+            void 0 !== d && ("hide" === d ? document.documentElement.classList.add("hide-aside") : document
+                .documentElement.classList.remove("hide-aside"));
+            /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent) && document.documentElement.classList.add("apple")
+        })(window)
+    </script>
+</body>
+
+</html>
