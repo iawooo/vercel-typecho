@@ -91,13 +91,24 @@ window.addEventListener('load', () => {
       path = 'search.php'
     }
     
+    const $loadDataItem = document.getElementById('loading-database')
+    if ($loadDataItem) {
+      $loadDataItem.style.display = 'block'
+    }
+    
     try {
-      const typeF = path.split('.')[1]
-      const response = await fetch(GLOBAL_CONFIG.root + path)
+      const typeF = path.split('.').pop()
+      // 确保在URL前添加正确的根路径
+      let searchUrl = path
+      if (!path.startsWith('http') && !path.startsWith('/')) {
+        searchUrl = GLOBAL_CONFIG.root + path
+      }
+      
+      console.log('正在加载搜索索引:', searchUrl)
+      const response = await fetch(searchUrl)
       
       if (!response.ok) {
-        console.error('搜索索引加载失败: ', response.status, response.statusText)
-        return
+        throw new Error(`HTTP错误! 状态: ${response.status}`)
       }
       
       if (typeF === 'json') {
@@ -115,17 +126,55 @@ window.addEventListener('load', () => {
           })
         } catch (e) {
           console.error('XML解析错误: ', e)
+          // 显示用户友好的错误消息
+          const $resultContent = document.getElementById('local-search-results')
+          if ($resultContent) {
+            $resultContent.innerHTML = '<div class="search-result-list"><div id="local-search__hits-empty">搜索索引加载失败，请检查数据库连接或联系管理员。</div></div>'
+          }
+        }
+      } else if (typeF === 'php') {
+        // 处理PHP文件返回的数据
+        try {
+          const res = await response.text()
+          // 尝试将返回内容解析为XML
+          const t = new window.DOMParser().parseFromString(res, 'text/xml')
+          if (t.documentElement.nodeName === "parsererror") {
+            throw new Error("返回的不是有效的XML")
+          }
+          datas = [...t.querySelectorAll('entry')].map(function (item) {
+            return {
+              title: item.querySelector('title') ? item.querySelector('title').textContent : '',
+              content: item.querySelector('content') ? item.querySelector('content').textContent : '',
+              url: item.querySelector('url') ? item.querySelector('url').textContent : ''
+            }
+          })
+        } catch (e) {
+          console.error('PHP返回数据解析错误: ', e)
+          // 显示用户友好的错误消息
+          const $resultContent = document.getElementById('local-search-results')
+          if ($resultContent) {
+            $resultContent.innerHTML = '<div class="search-result-list"><div id="local-search__hits-empty">搜索索引加载失败，请检查数据库连接或联系管理员。</div></div>'
+          }
         }
       }
       
-      const $loadDataItem = document.getElementById('loading-database')
+      // 隐藏加载指示器并显示结果区域
       if ($loadDataItem) {
+        $loadDataItem.style.display = 'none'
         const nextElem = $loadDataItem.nextElementSibling
         if (nextElem) nextElem.style.display = 'block'
-        $loadDataItem.remove()
       }
     } catch (error) {
       console.error('搜索加载错误: ', error)
+      // 显示用户友好的错误消息
+      const $resultContent = document.getElementById('local-search-results')
+      if ($resultContent) {
+        $resultContent.innerHTML = '<div class="search-result-list"><div id="local-search__hits-empty">搜索索引加载失败，请检查网络连接或联系管理员。</div></div>'
+      }
+      
+      if ($loadDataItem) {
+        $loadDataItem.style.display = 'none'
+      }
     }
 
     const $input = document.querySelector('#local-search-input input')
