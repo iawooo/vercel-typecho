@@ -10,38 +10,48 @@
 <head>
     <!-- 紧急修复点击事件 -->
     <script>
-        // 确保页面可以点击
+        // 立即执行修复
         (function() {
-            // 立即修复基本事件
-            document.documentElement.style.pointerEvents = 'auto';
+            // 1. 重设body样式
+            document.body.style.setProperty('pointer-events', 'auto', 'important');
+            document.body.style.setProperty('overflow', 'auto', 'important');
+            document.body.style.setProperty('width', 'auto', 'important');
+            document.body.style.setProperty('height', 'auto', 'important');
             
-            // 页面加载完成后再次修复
-            window.addEventListener('DOMContentLoaded', function() {
+            // 2. 查找并移除可能的全屏覆盖层
+            setTimeout(function() {
+                var elements = document.querySelectorAll('*');
+                var bodyChildren = document.body.children;
+                
+                // 检查直接子元素中的可能覆盖层
+                for (var i = 0; i < bodyChildren.length; i++) {
+                    var el = bodyChildren[i];
+                    
+                    // 跳过特定元素
+                    if (el.id === 'body-wrap' || el.id === 'search-mask' || 
+                        el.id === 'local-search' || el.id === 'sidebar') {
+                        continue;
+                    }
+                    
+                    // 检查是否为覆盖层
+                    var style = window.getComputedStyle(el);
+                    if (style.position === 'fixed' && 
+                        (style.top === '0px' || style.left === '0px') && 
+                        (style.width === '100%' || style.width === '100vw' || 
+                         style.height === '100%' || style.height === '100vh')) {
+                        
+                        // 移除覆盖层
+                        el.style.display = 'none';
+                        console.log('移除可能的覆盖层:', el.id || el.className);
+                    }
+                }
+            }, 100);
+            
+            // 3. 强制页面可操作
+            window.onload = function() {
                 document.body.style.pointerEvents = 'auto';
-                document.body.style.overflow = '';
-                document.body.style.width = '';
-            });
-            
-            // 移除可能存在的事件拦截器
-            function cleanupEvents() {
-                try {
-                    // 清理所有阻止默认行为的事件
-                    document.removeEventListener('click', handleEvent, true);
-                    document.removeEventListener('touchstart', handleEvent, true);
-                    document.removeEventListener('touchmove', handleEvent, true);
-                    document.removeEventListener('touchend', handleEvent, true);
-                } catch(e) {}
-            }
-            
-            function handleEvent(e) {
-                e.preventDefault();
-            }
-            
-            // 立即清理事件
-            cleanupEvents();
-            
-            // 页面加载后再次清理
-            window.addEventListener('DOMContentLoaded', cleanupEvents);
+                document.documentElement.style.pointerEvents = 'auto';
+            };
         })();
     </script>
 
@@ -617,6 +627,53 @@
 </head>
 
 <body>
+    <!-- 紧急修复点击事件 -->
+    <script>
+        // 立即执行修复
+        (function() {
+            // 1. 重设body样式
+            document.body.style.setProperty('pointer-events', 'auto', 'important');
+            document.body.style.setProperty('overflow', 'auto', 'important');
+            document.body.style.setProperty('width', 'auto', 'important');
+            document.body.style.setProperty('height', 'auto', 'important');
+            
+            // 2. 查找并移除可能的全屏覆盖层
+            setTimeout(function() {
+                var elements = document.querySelectorAll('*');
+                var bodyChildren = document.body.children;
+                
+                // 检查直接子元素中的可能覆盖层
+                for (var i = 0; i < bodyChildren.length; i++) {
+                    var el = bodyChildren[i];
+                    
+                    // 跳过特定元素
+                    if (el.id === 'body-wrap' || el.id === 'search-mask' || 
+                        el.id === 'local-search' || el.id === 'sidebar') {
+                        continue;
+                    }
+                    
+                    // 检查是否为覆盖层
+                    var style = window.getComputedStyle(el);
+                    if (style.position === 'fixed' && 
+                        (style.top === '0px' || style.left === '0px') && 
+                        (style.width === '100%' || style.width === '100vw' || 
+                         style.height === '100%' || style.height === '100vh')) {
+                        
+                        // 移除覆盖层
+                        el.style.display = 'none';
+                        console.log('移除可能的覆盖层:', el.id || el.className);
+                    }
+                }
+            }, 100);
+            
+            // 3. 强制页面可操作
+            window.onload = function() {
+                document.body.style.pointerEvents = 'auto';
+                document.documentElement.style.pointerEvents = 'auto';
+            };
+        })();
+    </script>
+    
     <!-- 搜索对话框 -->
     <div id="search-mask" style="display: none;"></div>
     <div id="local-search" style="display: none;">
