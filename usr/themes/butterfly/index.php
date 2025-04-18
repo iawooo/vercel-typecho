@@ -1,4 +1,37 @@
 <?php
+/**
+ * 自动检查并生成搜索索引文件
+ */
+$searchXmlPath = __DIR__ . '/search.xml';
+$searchXmlAgeThreshold = 24 * 60 * 60; // 24小时的秒数
+
+// 检查search.xml文件是否存在或超过更新阈值
+if (!file_exists($searchXmlPath) || (time() - filemtime($searchXmlPath)) > $searchXmlAgeThreshold) {
+    try {
+        $searchPhpPath = __DIR__ . '/search.php';
+        if (file_exists($searchPhpPath)) {
+            // 在后台运行生成搜索索引
+            if (function_exists('exec')) {
+                exec("php {$searchPhpPath} > {$searchXmlPath} 2>/dev/null &");
+            } else {
+                // 如果exec函数不可用，直接通过HTTP请求生成
+                $searchUrl = rtrim(Helper::options()->siteUrl, '/') . '/search.php';
+                $ch = curl_init($searchUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 5); // 5秒超时
+                $result = curl_exec($ch);
+                curl_close($ch);
+                
+                if ($result) {
+                    file_put_contents($searchXmlPath, $result);
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // 仅记录错误，不中断页面加载
+        error_log("自动生成搜索索引失败: " . $e->getMessage());
+    }
+}
 
 /**
  * <span>主题最新版本：<span id="latest">获取中...</span><script>fetch('https://ty.wehao.org').then(res => res.json()).then(({ver}) => {document.getElementById("latest").textContent = ver})</script></span>
