@@ -19,6 +19,7 @@ if ($sticky && $this->is('index') || $this->is('front')) {
     $sticky_html = "<span class='article-meta'><i class='fas fa-thumbtack article-meta__icon sticky'></i><span class='sticky'>置顶 </span><span class='article-meta__separator'>|</span></span>";
     $db = Typecho_Db::get();
     $dbType = explode('_', $db->getAdapterName())[0];
+    $isPostgreSQL = ($dbType == 'Pgsql' || $dbType == 'Postgresql' || $dbType == 'Pdo' && strpos($db->getAdapterName(), 'Pgsql') !== false);
     
     try {
         $select1 = $this->select()->where('type = ?', 'post');
@@ -29,16 +30,16 @@ if ($sticky && $this->is('index') || $this->is('front')) {
         $order = '';
         
         // 针对不同数据库使用不同的查询方式
-        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
-            // PostgreSQL的case语句语法不同
-            $case_stmt = 'CASE cid ';
+        if ($isPostgreSQL) {
+            // PostgreSQL的case语句语法
+            $case_stmt = 'CASE "cid" ';
             foreach ($sticky_cids as $i => $cid) {
                 if ($i == 0) $select1->where('cid = ?', $cid);
                 else $select1->orWhere('cid = ?', $cid);
                 $case_stmt .= "WHEN $cid THEN $i ";
                 $select2->where('cid != ?', $cid);
             }
-            $case_stmt .= 'END';
+            $case_stmt .= 'ELSE 999 END';
             
             if ($sticky_cids) $select1->order('', $case_stmt);
         } else {
@@ -49,7 +50,7 @@ if ($sticky && $this->is('index') || $this->is('front')) {
                 $order .= " when $cid then $i";
                 $select2->where('table.contents.cid != ?', $cid);
             }
-            if ($order) $select1->order('', "(case cid$order end)");
+            if ($order) $select1->order('', "(case cid$order else 999 end)");
         }
         
         if ($this->_currentPage == 1) {
@@ -61,15 +62,16 @@ if ($sticky && $this->is('index') || $this->is('front')) {
         
         $uid = $this->user->uid; //登录时，显示用户各自的私密文章
         if ($uid) {
-            if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            if ($isPostgreSQL) {
                 $select2->orWhere('author_id = ? AND status = ?', $uid, 'private');
             } else {
                 $select2->orWhere('authorId = ? AND status = ?', $uid, 'private');
             }
         }
         
-        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
-            $sticky_posts = $db->fetchAll($select2->order('created', Typecho_Db::SORT_DESC)->page($this->_currentPage, $this->parameter->pageSize));
+        if ($isPostgreSQL) {
+            // 在PostgreSQL中确保列名使用双引号
+            $sticky_posts = $db->fetchAll($select2->order('"created"', Typecho_Db::SORT_DESC)->page($this->_currentPage, $this->parameter->pageSize));
         } else {
             $sticky_posts = $db->fetchAll($select2->order('table.contents.created', Typecho_Db::SORT_DESC)->page($this->_currentPage, $this->parameter->pageSize));
         }
@@ -77,7 +79,8 @@ if ($sticky && $this->is('index') || $this->is('front')) {
         foreach ($sticky_posts as $sticky_post) $this->push($sticky_post); //压入列队
         $this->setTotal($this->getTotal() - count($sticky_cids)); //置顶文章不计算在所有文章内
     } catch (Exception $e) {
-        // 查询出错时不处理置顶文章
+        // 当查询出错时记录错误信息
+        error_log("置顶文章查询错误: " . $e->getMessage());
     }
 }
 ?>
