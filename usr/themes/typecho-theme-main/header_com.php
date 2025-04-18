@@ -84,7 +84,7 @@
     <meta charset="<?php $this->options->charset(); ?>">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="renderer" content="webkit">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
     <meta name="theme-color" content="<?php $this->options->themeColor() ?>">
     <title>
         <?php $this->archiveTitle(
@@ -142,7 +142,7 @@
             }
 
             <?php endif ?>img[data-lazy-src]:not(.loaded) {
-                filter: blur(10px) brightness(1);
+                filter: blur(0px) brightness(1);
             }
 
             img[data-lazy-src].error {
