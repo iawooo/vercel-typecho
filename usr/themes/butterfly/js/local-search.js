@@ -4,13 +4,28 @@ window.addEventListener('load', () => {
     const bodyStyle = document.body.style
     bodyStyle.width = '100%'
     bodyStyle.overflow = 'hidden'
-    btf.animateIn(document.getElementById('search-mask'), 'to_show 0.5s')
-    btf.animateIn(document.querySelector('#local-search .search-dialog'), 'titleScale 0.5s')
-    setTimeout(() => { document.querySelector('#local-search-input input').focus() }, 100)
+    
+    const searchMask = document.getElementById('search-mask')
+    const searchDialog = document.querySelector('#local-search .search-dialog')
+    
+    if (searchMask) {
+      btf.animateIn(searchMask, 'to_show 0.5s')
+    }
+    
+    if (searchDialog) {
+      btf.animateIn(searchDialog, 'titleScale 0.5s')
+    }
+    
+    const searchInput = document.querySelector('#local-search-input input')
+    if (searchInput) {
+      setTimeout(() => { searchInput.focus() }, 100)
+    }
+    
     if (!loadFlag) {
       search(GLOBAL_CONFIG.localSearch.path)
       loadFlag = true
     }
+    
     // shortcut: ESC
     document.addEventListener('keydown', function f (event) {
       if (event.code === 'Escape') {
@@ -24,15 +39,41 @@ window.addEventListener('load', () => {
     const bodyStyle = document.body.style
     bodyStyle.width = ''
     bodyStyle.overflow = ''
-    btf.animateOut(document.querySelector('#local-search .search-dialog'), 'search_close .5s')
-    btf.animateOut(document.getElementById('search-mask'), 'to_hide 0.5s')
+    
+    const searchDialog = document.querySelector('#local-search .search-dialog')
+    const searchMask = document.getElementById('search-mask')
+    
+    if (searchDialog) {
+      btf.animateOut(searchDialog, 'search_close .5s')
+    }
+    
+    if (searchMask) {
+      btf.animateOut(searchMask, 'to_hide 0.5s')
+    }
   }
 
   // click function
   const searchClickFn = () => {
-    document.querySelector('#search-button > .search').addEventListener('click', openSearch)
-    document.getElementById('search-mask').addEventListener('click', closeSearch)
-    document.querySelector('#local-search .search-close-button').addEventListener('click', closeSearch)
+    const searchButton = document.querySelector('#search-button > .search');
+    if (searchButton) {
+      searchButton.addEventListener('click', openSearch);
+    } else {
+      // 尝试直接查找搜索按钮
+      const altSearchButton = document.querySelector('#search-button');
+      if (altSearchButton) {
+        altSearchButton.addEventListener('click', openSearch);
+      }
+    }
+    
+    const searchMask = document.getElementById('search-mask');
+    if (searchMask) {
+      searchMask.addEventListener('click', closeSearch);
+    }
+    
+    const closeButton = document.querySelector('#local-search .search-close-button');
+    if (closeButton) {
+      closeButton.addEventListener('click', closeSearch);
+    }
   }
 
   searchClickFn()
@@ -49,34 +90,58 @@ window.addEventListener('load', () => {
     if (!path || path === 'undefined') {
       path = 'search.php'
     }
-    const typeF = path.split('.')[1]
-    const response = await fetch(GLOBAL_CONFIG.root + path)
-    if (typeF === 'json') {
-      datas = await response.json()
-    } else if (typeF === 'xml') {
-      const res = await response.text()
-      const t = await new window.DOMParser().parseFromString(res, 'text/xml')
-      const a = await t
-      datas = [...a.querySelectorAll('entry')].map(function (item) {
-        return {
-          title: item.querySelector('title').textContent,
-          content: item.querySelector('content').textContent,
-          url: item.querySelector('url').textContent
+    
+    try {
+      const typeF = path.split('.')[1]
+      const response = await fetch(GLOBAL_CONFIG.root + path)
+      
+      if (!response.ok) {
+        console.error('搜索索引加载失败: ', response.status, response.statusText)
+        return
+      }
+      
+      if (typeF === 'json') {
+        datas = await response.json()
+      } else if (typeF === 'xml') {
+        const res = await response.text()
+        try {
+          const t = new window.DOMParser().parseFromString(res, 'text/xml')
+          datas = [...t.querySelectorAll('entry')].map(function (item) {
+            return {
+              title: item.querySelector('title') ? item.querySelector('title').textContent : '',
+              content: item.querySelector('content') ? item.querySelector('content').textContent : '',
+              url: item.querySelector('url') ? item.querySelector('url').textContent : ''
+            }
+          })
+        } catch (e) {
+          console.error('XML解析错误: ', e)
         }
-      })
-    }
-    if (response.ok) {
+      }
+      
       const $loadDataItem = document.getElementById('loading-database')
-      $loadDataItem.nextElementSibling.style.display = 'block'
-      $loadDataItem.remove()
+      if ($loadDataItem) {
+        const nextElem = $loadDataItem.nextElementSibling
+        if (nextElem) nextElem.style.display = 'block'
+        $loadDataItem.remove()
+      }
+    } catch (error) {
+      console.error('搜索加载错误: ', error)
     }
 
     const $input = document.querySelector('#local-search-input input')
     const $resultContent = document.getElementById('local-search-results')
     const $loadingStatus = document.getElementById('loading-status')
+    
+    if (!$input || !$resultContent) {
+      console.error('搜索输入框或结果容器不存在')
+      return
+    }
+    
     $input.addEventListener('input', function () {
       const keywords = this.value.trim().toLowerCase().split(/[\s]+/)
-      if (keywords[0] !== '') $loadingStatus.innerHTML = '<i class="fas fa-spinner fa-pulse"></i>'
+      if ($loadingStatus && keywords[0] !== '') {
+        $loadingStatus.innerHTML = '<i class="fas fa-spinner fa-pulse"></i>'
+      }
 
       $resultContent.innerHTML = ''
       let str = '<div class="search-result-list">'
@@ -90,7 +155,7 @@ window.addEventListener('load', () => {
         }
         let dataTitle = data.title.trim().toLowerCase()
         const dataContent = data.content ? data.content.trim().replace(/<[^>]+>/g, '').toLowerCase() : ''
-        const dataUrl = data.url.startsWith('/') ? data.url : GLOBAL_CONFIG.root + data.url
+        const dataUrl = data.url && data.url.startsWith('/') ? data.url : (GLOBAL_CONFIG.root + (data.url || ''))
         let indexTitle = -1
         let indexContent = -1
         let firstOccur = -1
@@ -116,52 +181,57 @@ window.addEventListener('load', () => {
 
         // show search results
         if (isMatch) {
-          const content = data.content.trim().replace(/<[^>]+>/g, '')
-          if (firstOccur >= 0) {
-            // cut out 130 characters
-            // let start = firstOccur - 30 < 0 ? 0 : firstOccur - 30
-            // let end = firstOccur + 50 > content.length ? content.length : firstOccur + 50
-            let start = firstOccur - 30
-            let end = firstOccur + 100
+          try {
+            const content = data.content.trim().replace(/<[^>]+>/g, '')
+            if (firstOccur >= 0) {
+              // cut out 130 characters
+              let start = firstOccur - 30
+              let end = firstOccur + 100
 
-            if (start < 0) {
-              start = 0
+              if (start < 0) {
+                start = 0
+              }
+
+              if (start === 0) {
+                end = 100
+              }
+
+              if (end > content.length) {
+                end = content.length
+              }
+
+              let matchContent = content.substring(start, end)
+
+              // highlight all keywords
+              keywords.forEach(function (keyword) {
+                const regS = new RegExp(keyword, 'gi')
+                matchContent = matchContent.replace(regS, '<span class="search-keyword">' + keyword + '</span>')
+                dataTitle = dataTitle.replace(regS, '<span class="search-keyword">' + keyword + '</span>')
+              })
+
+              str += '<div class="local-search__hit-item"><a href="' + dataUrl + '" class="search-result-title">' + dataTitle + '</a>'
+              count += 1
+
+              if (dataContent !== '') {
+                str += '<p class="search-result">' + matchContent + '...</p>'
+              }
             }
-
-            if (start === 0) {
-              end = 100
-            }
-
-            if (end > content.length) {
-              end = content.length
-            }
-
-            let matchContent = content.substring(start, end)
-
-            // highlight all keywords
-            keywords.forEach(function (keyword) {
-              const regS = new RegExp(keyword, 'gi')
-              matchContent = matchContent.replace(regS, '<span class="search-keyword">' + keyword + '</span>')
-              dataTitle = dataTitle.replace(regS, '<span class="search-keyword">' + keyword + '</span>')
-            })
-
-            str += '<div class="local-search__hit-item"><a href="' + dataUrl + '" class="search-result-title">' + dataTitle + '</a>'
-            count += 1
-
-            if (dataContent !== '') {
-              str += '<p class="search-result">' + matchContent + '...</p>'
-            }
+            str += '</div>'
+          } catch (e) {
+            console.error('结果处理错误: ', e)
           }
-          str += '</div>'
         }
       })
-      if (count === 0) {
-        str += '<div id="local-search__hits-empty">' + GLOBAL_CONFIG.localSearch.languages.hits_empty.replace(/\$\{query}/, this.value.trim()) +
-          '</div>'
+      
+      if (count === 0 && GLOBAL_CONFIG.localSearch && GLOBAL_CONFIG.localSearch.languages) {
+        const emptyResultText = GLOBAL_CONFIG.localSearch.languages.hits_empty || '找不到结果: ${query}'
+        str += '<div id="local-search__hits-empty">' + emptyResultText.replace(/\$\{query}/, this.value.trim()) + '</div>'
       }
       str += '</div>'
       $resultContent.innerHTML = str
-      if (keywords[0] !== '') $loadingStatus.innerHTML = ''
+      if ($loadingStatus && keywords[0] !== '') {
+        $loadingStatus.innerHTML = ''
+      }
       window.pjax && window.pjax.refresh($resultContent)
     })
   }
