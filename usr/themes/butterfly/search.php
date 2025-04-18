@@ -35,42 +35,68 @@ try {
     try {
         if ($isPostgreSQL) {
             // PostgreSQL查询 - 使用双引号包裹表名和字段名
-            $select = $db->select('c."cid", c."title", c."text", c."created", c."slug"')
-                ->from('table.contents AS c')
-                ->where('c."type" = ?', 'post')
-                ->where('c."status" = ?', 'publish');
+            $prefix = $db->getPrefix();
+            $select = $db->select()->from('table.contents')
+                ->where('table.contents.type = ?', 'post')
+                ->where('table.contents.status = ?', 'publish');
+                
+            // 修改PostgreSQL的查询语法
+            $sql = $db->fix($select, array('table' => 'contents', 'table' => 'contents'));
+            
+            // 使用fetchAll直接获取结果集
+            $posts = $db->fetchAll($sql);
         } else {
             // MySQL查询
             $select = $db->select('c.cid, c.title, c.text, c.created, c.slug')
                 ->from('table.contents AS c')
                 ->where('c.type = ?', 'post')
                 ->where('c.status = ?', 'publish');
+                
+            // 执行查询
+            $posts = $db->fetchAll($select);
         }
-
-        // 执行查询
-        $posts = $db->fetchAll($select);
 
         if (empty($posts)) {
             echo '<entry><title>没有文章</title><content>没有找到任何已发布的文章</content><url>/</url></entry>';
         } else {
+            // 记录查询过程中的错误
+            $errors = array();
+            
             // 生成XML条目
             foreach ($posts as $post) {
                 try {
-                    $permalink = Typecho_Router::url('post', array('cid' => $post['cid']), Typecho_Widget::widget('Widget_Options')->index);
+                    // 对PostgreSQL的特殊处理
+                    $cid = $isPostgreSQL ? $post['cid'] : $post['cid'];
+                    
+                    // 获取文章永久链接
+                    $options = Typecho_Widget::widget('Widget_Options');
+                    $permalink = Typecho_Router::url('post', array('cid' => $cid), $options->index);
+                    
                     // 处理内容，移除HTML标签
-                    $text = strip_tags(Typecho_Widget::widget('Widget_Abstract_Contents')->markdown($post['text']));
+                    $text = isset($post['text']) ? $post['text'] : '';
+                    $text = strip_tags(Typecho_Widget::widget('Widget_Abstract_Contents')->markdown($text));
+                    
                     // 限制内容长度
                     $text = mb_substr($text, 0, 10000, 'utf-8');
                     
+                    // 文章标题
+                    $title = isset($post['title']) ? $post['title'] : '无标题文章';
+                    
                     echo '<entry>';
-                    echo '<title>' . htmlspecialchars($post['title']) . '</title>';
+                    echo '<title>' . htmlspecialchars($title) . '</title>';
                     echo '<url>' . $permalink . '</url>';
                     echo '<content>' . htmlspecialchars($text) . '</content>';
                     echo '</entry>';
                 } catch (Exception $e) {
                     // 略过单个文章的错误，继续处理其他文章
+                    $errors[] = "文章ID: {$post['cid']}: " . $e->getMessage();
                     error_log("搜索索引生成错误 - 文章ID: {$post['cid']}: " . $e->getMessage());
                 }
+            }
+            
+            // 如果处理过程中有错误，添加一个特殊条目
+            if (!empty($errors)) {
+                echo '<entry><title>处理警告</title><content>在生成索引时遇到一些问题，但大部分内容已成功生成。</content><url>/</url></entry>';
             }
         }
     } catch (Exception $e) {
