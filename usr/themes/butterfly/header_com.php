@@ -8,6 +8,43 @@
 <html data-theme="light" class="">
 
 <head>
+    <!-- 紧急修复点击事件 -->
+    <script>
+        // 确保页面可以点击
+        (function() {
+            // 立即修复基本事件
+            document.documentElement.style.pointerEvents = 'auto';
+            
+            // 页面加载完成后再次修复
+            window.addEventListener('DOMContentLoaded', function() {
+                document.body.style.pointerEvents = 'auto';
+                document.body.style.overflow = '';
+                document.body.style.width = '';
+            });
+            
+            // 移除可能存在的事件拦截器
+            function cleanupEvents() {
+                try {
+                    // 清理所有阻止默认行为的事件
+                    document.removeEventListener('click', handleEvent, true);
+                    document.removeEventListener('touchstart', handleEvent, true);
+                    document.removeEventListener('touchmove', handleEvent, true);
+                    document.removeEventListener('touchend', handleEvent, true);
+                } catch(e) {}
+            }
+            
+            function handleEvent(e) {
+                e.preventDefault();
+            }
+            
+            // 立即清理事件
+            cleanupEvents();
+            
+            // 页面加载后再次清理
+            window.addEventListener('DOMContentLoaded', cleanupEvents);
+        })();
+    </script>
+
     <!-- chart.js图标库 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -797,40 +834,63 @@
     </div>
     <!--移动导航栏-->
     <script>
+        // 页面加载完成后执行
         $(document).ready(function() {
-            // 修复搜索按钮功能
-            $(".search-form-input").on('click', function() {
-                const openSearch = () => {
-                    const bodyStyle = document.body.style;
-                    bodyStyle.width = '100%';
-                    bodyStyle.overflow = 'hidden';
-                    $("#search-mask").fadeIn();
-                    $("#local-search").fadeIn();
-                    setTimeout(() => { $('#local-search-input input').focus() }, 100);
-                };
-                
-                // 关闭侧边栏(如果是手机端)
-                $('#sidebar-menus').removeClass('open');
-                $('#menu-mask').hide();
-                
-                // 打开搜索框
-                openSearch();
+            // 恢复页面点击功能
+            $("html, body").css({
+                "pointer-events": "auto",
+                "overflow": ""
+            });
+            
+            // 移除可能存在的全局点击事件拦截
+            $(document).off("click touchstart touchmove touchend");
+            
+            // 搜索框展示和隐藏功能
+            $("#search-button, .search-form-input").on('click', function(e) {
+                e.stopPropagation(); // 阻止事件冒泡，防止关闭搜索框
+                $("#search-mask").fadeIn();
+                $("#local-search").fadeIn();
+                $("#local-search-input input").focus();
             });
             
             // 关闭搜索框
-            $(".search-close-button, #search-mask").on('click', function() {
-                const bodyStyle = document.body.style;
-                bodyStyle.width = '';
-                bodyStyle.overflow = '';
+            $(".search-close-button").on('click', function(e) {
+                e.stopPropagation(); // 阻止事件冒泡
                 $("#local-search").fadeOut();
                 $("#search-mask").fadeOut();
             });
             
-            // 确保页面可点击
-            $('body').css('pointer-events', 'auto');
-            $('a, button, .site-page').css('pointer-events', 'auto');
+            // 点击遮罩层关闭搜索框
+            $("#search-mask").on('click', function() {
+                $("#local-search").fadeOut();
+                $(this).fadeOut();
+            });
+            
+            // 防止点击搜索框内容时关闭搜索框
+            $(".search-dialog").on('click', function(e) {
+                e.stopPropagation();
+            });
+            
+            // 移动端菜单栏功能
+            $("#toggle-menu").on('click', function() {
+                $("#sidebar-menus").toggleClass('open');
+                if ($("#sidebar-menus").hasClass('open')) {
+                    $("#menu-mask").fadeIn();
+                } else {
+                    $("#menu-mask").fadeOut();
+                }
+            });
+            
+            // 点击遮罩层关闭菜单
+            $("#menu-mask").on('click', function() {
+                $("#sidebar-menus").removeClass('open');
+                $(this).fadeOut();
+            });
         });
     </script>
+    
+    <!-- 修复点击事件的脚本 -->
+    <script src="<?php $this->options->themeUrl('fix-clicks.js'); ?>"></script>
 </body>
 
 </html>
