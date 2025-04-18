@@ -41,7 +41,7 @@ try {
                 ->where('table.contents.status = ?', 'publish');
                 
             // 修改PostgreSQL的查询语法
-            $sql = $db->fix($select, array('table' => 'contents', 'table' => 'contents'));
+            $sql = $db->fix($select, array('table' => 'contents'));
             
             // 使用fetchAll直接获取结果集
             $posts = $db->fetchAll($sql);
