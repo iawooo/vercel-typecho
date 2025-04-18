@@ -1,0 +1,53 @@
+/**
+ * 修复点击事件问题的CSS
+ * 这个文件会覆盖所有可能阻止点击事件的样式
+ */
+
+/* 确保基本元素可点击 */
+html, body, #body-wrap, #content-inner, #page, 
+article, section, div, a, button, input, textarea, select {
+    pointer-events: auto !important;
+}
+
+/* 确保特定元素z-index不会被遮挡 */
+#body-wrap {
+    position: relative;
+    z-index: 1;
+}
+
+/* 确保页面内容区域正常交互 */
+.layout, .recent-posts, .recent-post-item,
+#aside-content, .card-widget, .pagination,
+.post-content, #article-container, .comments {
+    pointer-events: auto !important;
+}
+
+/* 确保所有链接和按钮可点击 */
+a, button, .site-page, .menus_item, .menus_item_child li, 
+.search-form-input, .dark-light-com {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+/* 确保导航栏可点击 */
+#nav, #menus, #page-header, .menus_items {
+    pointer-events: auto !important;
+}
+
+/* 移除任何可能存在的覆盖层 */
+body::before, body::after, 
+#body-wrap::before, #body-wrap::after,
+#content-inner::before, #content-inner::after {
+    display: none !important;
+    pointer-events: none !important;
+}
+
+/* 修复搜索对话框 */
+#search-mask, #local-search {
+    z-index: 999;
+}
+
+/* 修复侧边栏菜单 */
+#sidebar, #sidebar-menus, #menu-mask {
+    z-index: 998;
+} 
