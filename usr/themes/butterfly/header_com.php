@@ -106,6 +106,8 @@
     <link rel="stylesheet" href="<?php $this->options->themeUrl('css/style.css?v1.7.8'); ?>">
     <!-- 自定义CSS文件 - 用于头图样式调整 -->
     <link rel="stylesheet" href="<?php $this->options->themeUrl('custom.css'); ?>">
+    <!-- 修复点击事件CSS文件 -->
+    <link rel="stylesheet" href="<?php $this->options->themeUrl('fix-pointer.css'); ?>">
     <!--魔改美化-->
     <?php if (!empty($this->options->beautifyBlock) && in_array('ShowBeautifyChange', $this->options->beautifyBlock)) : ?>
         <link rel="stylesheet" href="<?php $this->options->themeUrl('css/custom.css?v1.5.9'); ?>">
@@ -823,6 +825,10 @@
                 $("#local-search").fadeOut();
                 $("#search-mask").fadeOut();
             });
+            
+            // 确保页面可点击
+            $('body').css('pointer-events', 'auto');
+            $('a, button, .site-page').css('pointer-events', 'auto');
         });
     </script>
 </body>
