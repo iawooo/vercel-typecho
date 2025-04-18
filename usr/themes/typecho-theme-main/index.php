@@ -18,28 +18,67 @@ if ($sticky && $this->is('index') || $this->is('front')) {
     $sticky_cids = explode(',', strtr($sticky, ' ', ',')); //分割文本 
     $sticky_html = "<span class='article-meta'><i class='fas fa-thumbtack article-meta__icon sticky'></i><span class='sticky'>置顶 </span><span class='article-meta__separator'>|</span></span>";
     $db = Typecho_Db::get();
-    $select1 = $this->select()->where('type = ?', 'post');
-    $select2 = $this->select()->where('type = ? AND status = ? AND created < ?', 'post', 'publish', time());
-    $this->row = [];
-    $this->stack = [];
-    $this->length = 0;
-    $order = '';
-    foreach ($sticky_cids as $i => $cid) {
-        if ($i == 0) $select1->where('cid = ?', $cid);
-        else $select1->orWhere('cid = ?', $cid);
-        $order .= " when $cid then $i";
-        $select2->where('table.contents.cid != ?', $cid);
+    $dbType = explode('_', $db->getAdapterName())[0];
+    
+    try {
+        $select1 = $this->select()->where('type = ?', 'post');
+        $select2 = $this->select()->where('type = ? AND status = ? AND created < ?', 'post', 'publish', time());
+        $this->row = [];
+        $this->stack = [];
+        $this->length = 0;
+        $order = '';
+        
+        // 针对不同数据库使用不同的查询方式
+        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            // PostgreSQL的case语句语法不同
+            $case_stmt = 'CASE cid ';
+            foreach ($sticky_cids as $i => $cid) {
+                if ($i == 0) $select1->where('cid = ?', $cid);
+                else $select1->orWhere('cid = ?', $cid);
+                $case_stmt .= "WHEN $cid THEN $i ";
+                $select2->where('cid != ?', $cid);
+            }
+            $case_stmt .= 'END';
+            
+            if ($sticky_cids) $select1->order('', $case_stmt);
+        } else {
+            // MySQL的case语句语法
+            foreach ($sticky_cids as $i => $cid) {
+                if ($i == 0) $select1->where('cid = ?', $cid);
+                else $select1->orWhere('cid = ?', $cid);
+                $order .= " when $cid then $i";
+                $select2->where('table.contents.cid != ?', $cid);
+            }
+            if ($order) $select1->order('', "(case cid$order end)");
+        }
+        
+        if ($this->_currentPage == 1) {
+            foreach ($db->fetchAll($select1) as $sticky_post) {
+                $sticky_post['sticky'] = $sticky_html;
+                $this->push($sticky_post);
+            }
+        }
+        
+        $uid = $this->user->uid; //登录时，显示用户各自的私密文章
+        if ($uid) {
+            if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+                $select2->orWhere('author_id = ? AND status = ?', $uid, 'private');
+            } else {
+                $select2->orWhere('authorId = ? AND status = ?', $uid, 'private');
+            }
+        }
+        
+        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            $sticky_posts = $db->fetchAll($select2->order('created', Typecho_Db::SORT_DESC)->page($this->_currentPage, $this->parameter->pageSize));
+        } else {
+            $sticky_posts = $db->fetchAll($select2->order('table.contents.created', Typecho_Db::SORT_DESC)->page($this->_currentPage, $this->parameter->pageSize));
+        }
+        
+        foreach ($sticky_posts as $sticky_post) $this->push($sticky_post); //压入列队
+        $this->setTotal($this->getTotal() - count($sticky_cids)); //置顶文章不计算在所有文章内
+    } catch (Exception $e) {
+        // 查询出错时不处理置顶文章
     }
-    if ($order) $select1->order('', "(case cid$order end)");
-    if ($this->_currentPage == 1) foreach ($db->fetchAll($select1) as $sticky_post) {
-        $sticky_post['sticky'] = $sticky_html;
-        $this->push($sticky_post);
-    }
-    $uid = $this->user->uid; //登录时，显示用户各自的私密文章
-    if ($uid) $select2->orWhere('authorId = ? AND status = ?', $uid, 'private');
-    $sticky_posts = $db->fetchAll($select2->order('table.contents.created', Typecho_Db::SORT_DESC)->page($this->_currentPage, $this->parameter->pageSize));
-    foreach ($sticky_posts as $sticky_post) $this->push($sticky_post); //压入列队
-    $this->setTotal($this->getTotal() - count($sticky_cids)); //置顶文章不计算在所有文章内
 }
 ?>
 <?php $this->need('header.php'); ?>
