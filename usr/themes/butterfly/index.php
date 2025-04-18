@@ -210,4 +210,13 @@ if ($sticky && $this->is('index') || $this->is('front')) {
 fugu基于typecho-butterfly7.9修改
 `);
     }
+    
+    // 修复可能的JSON解析错误
+    window.addEventListener('error', function(event) {
+        // 检查是否为JSON解析错误
+        if (event.message && event.message.includes('Unexpected token')) {
+            console.error('JSON解析错误已捕获，可能是API返回了非JSON格式的数据');
+            event.preventDefault(); // 防止错误继续冒泡
+        }
+    });
 </script>
