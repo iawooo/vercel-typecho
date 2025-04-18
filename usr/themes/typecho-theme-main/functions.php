@@ -132,9 +132,21 @@ function GetRandomThumbnailPost($widget)
 function art_count($cid)
 {
     $db = Typecho_Db::get();
-    $rs = $db->fetchRow($db->select('table.contents.text')->from('table.contents')->where('table.contents.cid=?', $cid)->order('table.contents.cid', Typecho_Db::SORT_ASC)->limit(1));
-    echo mb_strlen($rs['text'], 'UTF-8');
+    $dbType = explode('_', $db->getAdapterName())[0];
+    
+    try {
+        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            // PostgreSQL兼容语法
+            $rs = $db->fetchRow($db->select('"text"')->from('table.contents')->where('cid = ?', $cid)->order('cid', Typecho_Db::SORT_ASC)->limit(1));
+        } else {
+            $rs = $db->fetchRow($db->select('table.contents.text')->from('table.contents')->where('table.contents.cid=?', $cid)->order('table.contents.cid', Typecho_Db::SORT_ASC)->limit(1));
+        }
+        echo mb_strlen($rs['text'], 'UTF-8');
+    } catch (Exception $e) {
+        echo '0'; // 出错时返回0
+    }
 }
+
 // 文章字数统计2
 function charactersNum($archive)
 {
@@ -147,25 +159,42 @@ function allOfCharacters()
     $showPrivate = 0;
     $chars = 0;
     $db = Typecho_Db::get();
-    if ($showPrivate == 0) {
-        $select = $db->select('text')->from('table.contents')->where('table.contents.status = ?', 'publish');
-    } else {
-        $select = $db->select('text')->from('table.contents');
+    $dbType = explode('_', $db->getAdapterName())[0];
+    
+    try {
+        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            // PostgreSQL兼容语法
+            if ($showPrivate == 0) {
+                $select = $db->select('"text"')->from('table.contents')->where('status = ?', 'publish');
+            } else {
+                $select = $db->select('"text"')->from('table.contents');
+            }
+        } else {
+            if ($showPrivate == 0) {
+                $select = $db->select('text')->from('table.contents')->where('table.contents.status = ?', 'publish');
+            } else {
+                $select = $db->select('text')->from('table.contents');
+            }
+        }
+        
+        $rows = $db->fetchAll($select);
+        foreach ($rows as $row) {
+            $chars += mb_strlen($row['text'], 'UTF-8');
+        }
+        
+        $unit = '';
+        if ($chars >= 10000) {
+            $chars /= 10000;
+            $unit = 'W';
+        } else if ($chars >= 1000) {
+            $chars /= 1000;
+            $unit = 'K';
+        }
+        $out = sprintf('%.2lf %s', $chars, $unit);
+        echo $out;
+    } catch (Exception $e) {
+        echo '0'; // 出错时返回0
     }
-    $rows = $db->fetchAll($select);
-    foreach ($rows as $row) {
-        $chars += mb_strlen($row['text'], 'UTF-8');
-    }
-    $unit = '';
-    if ($chars >= 10000) {
-        $chars /= 10000;
-        $unit = 'W';
-    } else if ($chars >= 1000) {
-        $chars /= 1000;
-        $unit = 'K';
-    }
-    $out = sprintf('%.2lf %s', $chars, $unit);
-    echo $out;
 }
 
 function thumb($cid)
@@ -180,18 +209,36 @@ function thumb($cid)
             //随机图片，须按"1.jpg","2.jpg","3.jpg"...的顺序命名，注意是绝对地址
         }
     }
+    
     $db = Typecho_Db::get();
-    $rs = $db->fetchRow($db->select('table.contents.text')
-        ->from('table.contents')
-        ->where('table.contents.type = ?', 'attachment')
-        ->where('table.contents.parent= ?', $cid)
-        ->order('table.contents.cid', Typecho_Db::SORT_ASC)
-        ->limit(1));
-    $img = unserialize($rs['text']);
-    if (empty($img)) {
-        echo $imgurl;
-    } else {
-        echo '你的博客地址' . $img['path'];
+    $dbType = explode('_', $db->getAdapterName())[0];
+    
+    try {
+        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            // PostgreSQL兼容语法
+            $rs = $db->fetchRow($db->select('"text"')
+                ->from('table.contents')
+                ->where('type = ?', 'attachment')
+                ->where('parent = ?', $cid)
+                ->order('cid', Typecho_Db::SORT_ASC)
+                ->limit(1));
+        } else {
+            $rs = $db->fetchRow($db->select('table.contents.text')
+                ->from('table.contents')
+                ->where('table.contents.type = ?', 'attachment')
+                ->where('table.contents.parent= ?', $cid)
+                ->order('table.contents.cid', Typecho_Db::SORT_ASC)
+                ->limit(1));
+        }
+        
+        $img = unserialize($rs['text']);
+        if (empty($img)) {
+            echo $imgurl;
+        } else {
+            echo '你的博客地址' . $img['path'];
+        }
+    } catch (Exception $e) {
+        echo $imgurl; // 出错时返回默认图片
     }
 }
 
@@ -564,13 +611,31 @@ function timeZone($from)
 function tagsNum($display = true)
 {
     $db = Typecho_Db::get();
-    $total_tags = $db->fetchObject($db->select(array('COUNT(mid)' => 'num'))
-        ->from('table.metas')
-        ->where('table.metas.type = ?', 'tag'))->num;
-    if ($display) {
-        echo $total_tags;
-    } else {
-        return $total_tags;
+    $dbType = explode('_', $db->getAdapterName())[0];
+    
+    try {
+        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            // PostgreSQL兼容语法
+            $total_tags = $db->fetchObject($db->select(array('COUNT(mid)' => 'num'))
+                ->from('table.metas')
+                ->where('type = ?', 'tag'))->num;
+        } else {
+            $total_tags = $db->fetchObject($db->select(array('COUNT(mid)' => 'num'))
+                ->from('table.metas')
+                ->where('table.metas.type = ?', 'tag'))->num;
+        }
+        
+        if ($display) {
+            echo $total_tags;
+        } else {
+            return $total_tags;
+        }
+    } catch (Exception $e) {
+        if ($display) {
+            echo '0';
+        } else {
+            return 0;
+        }
     }
 }
 
@@ -593,24 +658,51 @@ function getGravatar($email, $name, $comments_a, $s = 96, $d = 'mp', $r = 'g')
     } else {
         $qquser = $vai['1']['0'];
         $db = Typecho_Db::get();
-        if (!array_key_exists('qqk', $db->fetchRow($db->select()->from('table.comments')))) {
-            $db->query('ALTER TABLE `' . $db->getPrefix() . 'comments` ADD `qqk` varchar(64) DEFAULT NULL;');
+        $dbType = explode('_', $db->getAdapterName())[0];
+        $prefix = $db->getPrefix();
+        
+        try {
+            // 检查qqk列是否存在
+            $fieldsExist = false;
+            try {
+                $db->fetchRow($db->select('qqk')->from('table.comments')->limit(1));
+                $fieldsExist = true;
+            } catch (Exception $e) {
+                $fieldsExist = false;
+            }
+            
+            // 如果列不存在，添加它
+            if (!$fieldsExist) {
+                if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+                    // PostgreSQL语法
+                    $db->query("ALTER TABLE {$prefix}comments ADD COLUMN \"qqk\" varchar(64) DEFAULT NULL");
+                } else {
+                    // MySQL语法
+                    $db->query('ALTER TABLE `' . $db->getPrefix() . 'comments` ADD `qqk` varchar(64) DEFAULT NULL;');
+                }
+            }
+            
+            // 获取QQ头像键值
+            if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+                $dbkRow = $db->fetchRow($db->select('qqk')->from('table.comments')->where('mail = ?', $email));
+                $dbk = isset($dbkRow['qqk']) ? $dbkRow['qqk'] : NULL;
+            } else {
+                $dbk = $db->fetchRow($db->select('qqk')->from('table.comments')->where('mail=?', $email))['qqk'];
+            }
+            
+            if ($dbk == NULL) {
+                $url = 'https://q1.qlogo.cn/headimg_dl?dst_uin=' . $qquser . '&spec=100';
+            } else {
+                $url = 'https://q1.qlogo.cn/g?b=qq&k=' . $dbk . '&s=100';
+            }
+            $imga = '<img ' . $comments_a . ' src="' . GetLazyLoad() . '" data-lazy-src="' . $url . '" >';
+        } catch (Exception $e) {
+            // 出错时使用默认Gravatar
+            $url = Helper::options()->GravatarSelect;
+            $url .= md5(strtolower(trim($email)));
+            $url .= "?s=$s&d=$d&r=$r";
+            $imga = '<img ' . $comments_a . ' src="' . GetLazyLoad() . '" data-lazy-src="' . $url . '" >';
         }
-        $dbk = $db->fetchRow($db->select('qqk')->from('table.comments')->where('mail=?', $email))['qqk'];
-        if ($dbk == NULL) {
-            // $geturl = 'https://ptlogin2.qq.com/getface?&imgtype=1&uin=' . $qquser;
-            // $qqurl = file_get_contents($geturl);
-            // $str1 = explode('sdk&k=', $qqurl);
-            // if (isset($str1[1])) {
-            //     $str2 = explode('&t=', $str1[1]);
-            //     $k = $str2[0];
-            //     $db->query($db->update('table.comments')->rows(array('qqk' => $k))->where('mail=?', $email));
-            // }
-            $url = 'https://q1.qlogo.cn/headimg_dl?dst_uin=' . $qquser . '&spec=100';
-        } else {
-            $url = 'https://q1.qlogo.cn/g?b=qq&k=' . $dbk . '&s=100';
-        }
-        $imga = '<img ' . $comments_a . ' src="' . GetLazyLoad() . '" data-lazy-src="' . $url . '" >';
     }
     return $imga;
 }
@@ -700,16 +792,27 @@ function commentRank($widget, $email = NULL)
     }
     $string_arr = explode("\r\n", $txt);
     $long = count($string_arr);
+    $mailList = array();
+    $authList = array();
+    
     for ($i = 0; $i < $long; $i++) {
-        $mailList[] = explode("||", $string_arr[$i])[0];
-        $authList[] = explode("||", $string_arr[$i])[1];
+        $parts = explode("||", $string_arr[$i]);
+        if (count($parts) >= 2) {
+            $mailList[] = $parts[0];
+            $authList[] = $parts[1];
+        }
     }
-    $all = array_combine($mailList, $authList);
+    
+    if (count($mailList) > 0) {
+        $all = array_combine($mailList, $authList);
 
-    if ($widget->authorId == $widget->ownerId) {
-        echo '<span class="vtag vmaster">博主</span>';
-    } else if (in_array($email, $mailList)) {
-        echo '<span class="vtag vauth">' . $all[$email] . '</span>';
+        if ($widget->authorId == $widget->ownerId) {
+            echo '<span class="vtag vmaster">博主</span>';
+        } else if (in_array($email, $mailList)) {
+            echo '<span class="vtag vauth">' . $all[$email] . '</span>';
+        } else {
+            echo '<span class="vtag vvisitor">访客</span>';
+        }
     } else {
         echo '<span class="vtag vvisitor">访客</span>';
     }
@@ -719,33 +822,54 @@ function commentRank($widget, $email = NULL)
 function get_comment_at($coid)
 {
     $db = Typecho_Db::get();
-    $prow = $db->fetchRow($db->select('parent,status')->from('table.comments')
-        ->where('coid = ?', $coid)); //当前评论
-    $mail = "";
-    $parent = @$prow['parent'];
-    if ($parent != "0") { //子评论
-        $arow = $db->fetchRow($db->select('author,status,mail')->from('table.comments')
-            ->where('coid = ?', $parent)); //查询该条评论的父评论的信息
-        @$author = @$arow['author']; //作者名称
-        $mail = @$arow['mail'];
-        if (@$author && $arow['status'] == "approved") { //父评论作者存在且父评论已经审核通过
-            if (@$prow['status'] == "waiting") {
-                echo '<p class="commentReview">（评论审核中）)</p>';
+    $dbType = explode('_', $db->getAdapterName())[0];
+    
+    try {
+        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            // PostgreSQL兼容语法
+            $prow = $db->fetchRow($db->select('parent,status')->from('table.comments')
+                ->where('coid = ?', $coid));
+        } else {
+            $prow = $db->fetchRow($db->select('parent,status')->from('table.comments')
+                ->where('coid = ?', $coid));
+        }
+        
+        $mail = "";
+        $parent = @$prow['parent'];
+        
+        if ($parent != "0") { //子评论
+            if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+                $arow = $db->fetchRow($db->select('author,status,mail')->from('table.comments')
+                    ->where('coid = ?', $parent));
+            } else {
+                $arow = $db->fetchRow($db->select('author,status,mail')->from('table.comments')
+                    ->where('coid = ?', $parent));
             }
-            echo '<a onclick="b(this);return false;" href="#comment-' . $parent . '">@' . $author . '</a>';
-        } else { //父评论作者不存在或者父评论没有审核通过
+            
+            @$author = @$arow['author']; //作者名称
+            $mail = @$arow['mail'];
+            
+            if (@$author && $arow['status'] == "approved") { //父评论作者存在且父评论已经审核通过
+                if (@$prow['status'] == "waiting") {
+                    echo '<p class="commentReview">（评论审核中）)</p>';
+                }
+                echo '<a onclick="b(this);return false;" href="#comment-' . $parent . '">@' . $author . '</a>';
+            } else { //父评论作者不存在或者父评论没有审核通过
+                if (@$prow['status'] == "waiting") {
+                    echo '<p class="commentReview">（评论审核中）)</p>';
+                } else {
+                    echo '';
+                }
+            }
+        } else { //母评论，无需输出锚点链接
             if (@$prow['status'] == "waiting") {
                 echo '<p class="commentReview">（评论审核中）)</p>';
             } else {
                 echo '';
             }
         }
-    } else { //母评论，无需输出锚点链接
-        if (@$prow['status'] == "waiting") {
-            echo '<p class="commentReview">（评论审核中）)</p>';
-        } else {
-            echo '';
-        }
+    } catch (Exception $e) {
+        echo ''; // 出错时不输出任何内容
     }
 }
 /**
@@ -1034,38 +1158,63 @@ function get_last_update()
     $status = 'publish';
     $now = time();
     $db = Typecho_Db::get();
+    $dbType = explode('_', $db->getAdapterName())[0];
     $prefix = $db->getPrefix();
-    $create = $db->fetchRow($db->select('created')->from('table.contents')->where('table.contents.type=? and status=?', $type, $status)->order('created', Typecho_Db::SORT_DESC)->limit($num));
-    $update = $db->fetchRow($db->select('modified')->from('table.contents')->where('table.contents.type=? and status=?', $type, $status)->order('modified', Typecho_Db::SORT_DESC)->limit($num));
-    if ($create >= $update) {
-        echo Typecho_I18n::dateWord(isset($create['created']), $now);
-    } else {
-        $lastModified = $now - $update['modified'];
-        $timeIntervals = [
-            31536000 => '年',
-            2592000 => '个月',
-            86400 => '天',
-            3600 => '小时',
-            60 => '分钟',
-            1 => '秒'
-        ];
-        foreach ($timeIntervals as $interval => $label) {
-            if ($lastModified > $interval) {
-                $value = floor($lastModified / $interval);
-                echo $value . ' ' . $label . '前';
-                break;
+    
+    try {
+        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            // PostgreSQL兼容语法
+            $create = $db->fetchRow($db->select('created')->from('table.contents')->where('type = ? AND status = ?', $type, $status)->order('created', Typecho_Db::SORT_DESC)->limit(1));
+            $update = $db->fetchRow($db->select('modified')->from('table.contents')->where('type = ? AND status = ?', $type, $status)->order('modified', Typecho_Db::SORT_DESC)->limit(1));
+        } else {
+            $create = $db->fetchRow($db->select('created')->from('table.contents')->where('table.contents.type=? and status=?', $type, $status)->order('created', Typecho_Db::SORT_DESC)->limit($num));
+            $update = $db->fetchRow($db->select('modified')->from('table.contents')->where('table.contents.type=? and status=?', $type, $status)->order('modified', Typecho_Db::SORT_DESC)->limit($num));
+        }
+        
+        if ($create >= $update) {
+            echo Typecho_I18n::dateWord(isset($create['created']), $now);
+        } else {
+            $lastModified = $now - $update['modified'];
+            $timeIntervals = [
+                31536000 => '年',
+                2592000 => '个月',
+                86400 => '天',
+                3600 => '小时',
+                60 => '分钟',
+                1 => '秒'
+            ];
+            foreach ($timeIntervals as $interval => $label) {
+                if ($lastModified > $interval) {
+                    $value = floor($lastModified / $interval);
+                    echo $value . ' ' . $label . '前';
+                    break;
+                }
             }
         }
+    } catch (Exception $e) {
+        echo '未知'; // 出错时返回未知
     }
 }
 //文章阅读时间统计
 function art_time($cid)
 {
     $db = Typecho_Db::get();
-    $rs = $db->fetchRow($db->select('table.contents.text')->from('table.contents')->where('table.contents.cid=?', $cid)->order('table.contents.cid', Typecho_Db::SORT_ASC)->limit(1));
-    $text = preg_replace("/[^\x{4e00}-\x{9fa5}]/u", "", $rs['text']);
-    $text_word = mb_strlen($text, 'utf-8');
-    echo ceil($text_word / 400);
+    $dbType = explode('_', $db->getAdapterName())[0];
+    
+    try {
+        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            // PostgreSQL兼容语法
+            $rs = $db->fetchRow($db->select('"text"')->from('table.contents')->where('cid = ?', $cid)->order('cid', Typecho_Db::SORT_ASC)->limit(1));
+        } else {
+            $rs = $db->fetchRow($db->select('table.contents.text')->from('table.contents')->where('table.contents.cid=?', $cid)->order('table.contents.cid', Typecho_Db::SORT_ASC)->limit(1));
+        }
+        
+        $text = preg_replace("/[^\x{4e00}-\x{9fa5}]/u", "", $rs['text']);
+        $text_word = mb_strlen($text, 'utf-8');
+        echo ceil($text_word / 400);
+    } catch (Exception $e) {
+        echo '1'; // 出错时返回1分钟
+    }
 }
 // 自定义编辑器
 Typecho_Plugin::factory('admin/write-post.php')->bottom = array('editor', 'reset');
