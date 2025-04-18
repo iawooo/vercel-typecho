@@ -685,7 +685,7 @@
                 </div>
                 <div class="menus_item">
                     <a class="site-page" id="search-button">
-                        <i class="fas fa-search fa-fw"></i>
+                        <i class="fa-fw fas fa-search"></i>
                         <span class="search">搜索</span>
                     </a>
                 </div>
