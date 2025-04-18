@@ -876,10 +876,36 @@ function get_post_view($archive)
 {
     $db = Typecho_Db::get();
     $cid = $archive->cid;
-    if (!array_key_exists('views', $db->fetchRow($db->select()->from('table.contents')))) {
-        $db->query('ALTER TABLE `' . $db->getPrefix() . 'contents` ADD `views` INT(10) DEFAULT 0;');
+    
+    // 检查数据库类型并适配不同的SQL语法
+    $dbType = explode('_', $db->getAdapterName())[0];
+    $prefix = $db->getPrefix();
+    
+    // 检查视图字段是否存在
+    $fieldsExist = false;
+    try {
+        // 尝试查询，看字段是否存在
+        $db->fetchRow($db->select('views')->from('table.contents')->where('cid = ?', $cid));
+        $fieldsExist = true;
+    } catch (Exception $e) {
+        $fieldsExist = false;
     }
-    $exist = $db->fetchRow($db->select('views')->from('table.contents')->where('cid = ?', $cid))['views'];
+    
+    // 如果字段不存在，为不同数据库创建兼容的ALTER语句
+    if (!$fieldsExist) {
+        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            // PostgreSQL语法
+            $db->query("ALTER TABLE {$prefix}contents ADD COLUMN \"views\" INT DEFAULT 0");
+        } else {
+            // MySQL/SQLite语法
+            $db->query("ALTER TABLE `{$prefix}contents` ADD `views` INT(10) DEFAULT 0");
+        }
+    }
+    
+    // 获取文章访问量
+    $viewsRow = $db->fetchRow($db->select('views')->from('table.contents')->where('cid = ?', $cid));
+    $exist = isset($viewsRow['views']) ? $viewsRow['views'] : 0;
+    
     if ($archive->is('single')) {
         $cookie = Typecho_Cookie::get('contents_views');
         $cookie = $cookie ? explode(',', $cookie) : array();
@@ -895,16 +921,47 @@ function get_post_view($archive)
     }
     echo $exist == 0 ? '0' : ' ' . $exist;
 }
+
 //总访问量
 function theAllViews()
 {
     $db = Typecho_Db::get();
-    if (!array_key_exists('views', $db->fetchRow($db->select()->from('table.contents')))) {
-        $db->query('ALTER TABLE `' . $db->getPrefix() . 'contents` ADD `views` INT(10) DEFAULT 0;');
+    
+    // 检查数据库类型
+    $dbType = explode('_', $db->getAdapterName())[0];
+    $prefix = $db->getPrefix();
+    
+    // 检查视图字段是否存在
+    $fieldsExist = false;
+    try {
+        // 尝试查询，看字段是否存在
+        $db->fetchRow($db->select('views')->from('table.contents')->limit(1));
+        $fieldsExist = true;
+    } catch (Exception $e) {
+        $fieldsExist = false;
     }
-    $row = $db->fetchAll($db->select('SUM(views)')->from('table.contents'));
-    echo array_values($row[0])[0];
+    
+    // 如果字段不存在，为不同数据库创建兼容的ALTER语句
+    if (!$fieldsExist) {
+        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+            // PostgreSQL语法
+            $db->query("ALTER TABLE {$prefix}contents ADD COLUMN \"views\" INT DEFAULT 0");
+        } else {
+            // MySQL/SQLite语法
+            $db->query("ALTER TABLE `{$prefix}contents` ADD `views` INT(10) DEFAULT 0");
+        }
+    }
+    
+    // 根据数据库类型使用不同的SUM查询
+    if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
+        $row = $db->fetchAll($db->select('SUM(views) AS sum_views')->from('table.contents'));
+        echo isset($row[0]['sum_views']) ? $row[0]['sum_views'] : 0;
+    } else {
+        $row = $db->fetchAll($db->select('SUM(views)')->from('table.contents'));
+        echo array_values($row[0])[0] ?: 0;
+    }
 }
+
 //  回复可见       
 Typecho_Plugin::factory('Widget_Abstract_Contents')->excerptEx = array('myyodux', 'one');
 Typecho_Plugin::factory('Widget_Abstract_Contents')->contentEx = array('myyodux', 'one');
