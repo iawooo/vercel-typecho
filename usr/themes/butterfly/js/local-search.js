@@ -45,6 +45,10 @@ window.addEventListener('load', () => {
 
   async function search (path) {
     let datas = []
+    // 如果path未定义，使用默认路径
+    if (!path || path === 'undefined') {
+      path = 'search.php'
+    }
     const typeF = path.split('.')[1]
     const response = await fetch(GLOBAL_CONFIG.root + path)
     if (typeF === 'json') {
