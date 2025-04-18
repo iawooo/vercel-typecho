@@ -18,39 +18,48 @@ if ($sticky && $this->is('index') || $this->is('front')) {
     $sticky_cids = explode(',', strtr($sticky, ' ', ',')); //分割文本 
     $sticky_html = "<span class='article-meta'><i class='fas fa-thumbtack article-meta__icon sticky'></i><span class='sticky'>置顶 </span><span class='article-meta__separator'>|</span></span>";
     $db = Typecho_Db::get();
-    $dbType = explode('_', $db->getAdapterName())[0];
-    $isPostgreSQL = ($dbType == 'Pgsql' || $dbType == 'Postgresql' || $dbType == 'Pdo' && strpos($db->getAdapterName(), 'Pgsql') !== false);
+    $dbType = explode('_', $db->getAdapterName());
+    $dbType = strtolower($dbType[0]);
+    $isPostgreSQL = ($dbType == 'pgsql');
     
     try {
         $select1 = $this->select()->where('type = ?', 'post');
-        $select2 = $this->select()->where('type = ? AND status = ? AND created < ?', 'post', 'publish', time());
+        
+        if ($isPostgreSQL) {
+            $select2 = $this->select()->where('"type" = ? AND "status" = ? AND "created" < ?', 'post', 'publish', time());
+        } else {
+            $select2 = $this->select()->where('type = ? AND status = ? AND created < ?', 'post', 'publish', time());
+        }
+        
         $this->row = [];
         $this->stack = [];
         $this->length = 0;
-        $order = '';
         
         // 针对不同数据库使用不同的查询方式
         if ($isPostgreSQL) {
             // PostgreSQL的case语句语法
             $case_stmt = 'CASE "cid" ';
             foreach ($sticky_cids as $i => $cid) {
-                if ($i == 0) $select1->where('cid = ?', $cid);
-                else $select1->orWhere('cid = ?', $cid);
+                $cid = intval($cid); // 确保cid是整数
+                if ($i == 0) $select1->where('"cid" = ?', $cid);
+                else $select1->orWhere('"cid" = ?', $cid);
                 $case_stmt .= "WHEN $cid THEN $i ";
-                $select2->where('cid != ?', $cid);
+                $select2->where('"cid" != ?', $cid);
             }
             $case_stmt .= 'ELSE 999 END';
             
-            if ($sticky_cids) $select1->order('', $case_stmt);
+            if ($sticky_cids) $select1->order($case_stmt, Typecho_Db::SORT_ASC);
         } else {
             // MySQL的case语句语法
+            $order = '';
             foreach ($sticky_cids as $i => $cid) {
+                $cid = intval($cid); // 确保cid是整数
                 if ($i == 0) $select1->where('cid = ?', $cid);
                 else $select1->orWhere('cid = ?', $cid);
                 $order .= " when $cid then $i";
                 $select2->where('table.contents.cid != ?', $cid);
             }
-            if ($order) $select1->order('', "(case cid$order else 999 end)");
+            if ($order) $select1->order("case cid$order else 999 end", Typecho_Db::SORT_ASC);
         }
         
         if ($this->_currentPage == 1) {
@@ -63,7 +72,7 @@ if ($sticky && $this->is('index') || $this->is('front')) {
         $uid = $this->user->uid; //登录时，显示用户各自的私密文章
         if ($uid) {
             if ($isPostgreSQL) {
-                $select2->orWhere('author_id = ? AND status = ?', $uid, 'private');
+                $select2->orWhere('"authorId" = ? AND "status" = ?', $uid, 'private');
             } else {
                 $select2->orWhere('authorId = ? AND status = ?', $uid, 'private');
             }
