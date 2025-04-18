@@ -5,14 +5,23 @@
     <article class="post-content" id="article-container">
        <?php
         $db = Typecho_Db::get();
-        $dbType = explode('_', $db->getAdapterName())[0];
+        $dbType = explode('_', $db->getAdapterName());
+        $dbType = strtolower($dbType[0]);
+        $isPostgreSQL = ($dbType == 'pgsql');
         
         try {
             // 使用数据库无关的查询方式
-            $sql = $db->select()->from('table.comments')
-             ->where('cid = ?', $this->cid)
-             ->where('mail = ?', $this->remember('mail', true))
-             ->limit(1);
+            if ($isPostgreSQL) {
+                $sql = $db->select()->from('table.comments')
+                    ->where('"cid" = ?', $this->cid)
+                    ->where('"mail" = ?', $this->remember('mail', true))
+                    ->limit(1);
+            } else {
+                $sql = $db->select()->from('table.comments')
+                    ->where('cid = ?', $this->cid)
+                    ->where('mail = ?', $this->remember('mail', true))
+                    ->limit(1);
+            }
             $result = $db->fetchAll($sql);
             
             if ($this->user->hasLogin() || $result) {
