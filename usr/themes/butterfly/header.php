@@ -27,60 +27,14 @@
                     font-family: 'Lucida-Calligraphy-Italic';
                 }
                 
-                /* 添加的样式 */
+                /* 基础位置样式 - 其他样式已移到custom.css */
                 .one_third_page {
                     height: 33.33vh !important;
                     position: relative;
                 }
-                
-                .author-info-box {
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background-color: rgba(255, 255, 255, 0.2);
-                    padding: 20px;
-                    border-radius: 10px;
-                    text-align: center;
-                    z-index: 10;
-                    width: 300px;
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                    backdrop-filter: blur(5px);
-                }
-                
-                .author-info-box.dark-mode {
-                    background-color: rgba(0, 0, 0, 0.2);
-                    color: #fff;
-                }
-                
-                .author-avatar {
-                    width: 80px;
-                    height: 80px;
-                    border-radius: 50%;
-                    margin: 0 auto 10px;
-                    overflow: hidden;
-                }
-                
-                .author-avatar img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-                
-                .author-name {
-                    font-size: 20px;
-                    font-weight: bold;
-                    margin-bottom: 10px;
-                }
-                
-                .author-description {
-                    font-size: 14px;
-                    line-height: 1.5;
-                    margin-bottom: 10px;
-                }
                 </style>
 
-                <!-- 添加的作者信息模块 -->
+                <!-- 作者信息模块 -->
                 <div class="author-info-box" id="author-info-box">
                     <div class="author-avatar">
                         <img src="<?php $this->options->logoUrl() ?>" alt="author avatar">
