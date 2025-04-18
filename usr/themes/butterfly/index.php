@@ -34,7 +34,24 @@ if (!file_exists($searchXmlPath) || (time() - filemtime($searchXmlPath)) > $sear
 }
 
 /**
- * <span>主题最新版本：<span id="latest">获取中...</span><script>fetch('https://ty.wehao.org').then(res => res.json()).then(({ver}) => {document.getElementById("latest").textContent = ver})</script></span>
+ * <span>主题最新版本：<span id="latest">获取中...</span><script>
+fetch('https://ty.wehao.org')
+  .then(res => {
+    if (!res.ok) throw new Error('Network response was not ok');
+    return res.json();
+  })
+  .then(data => {
+    if (data && data.ver) {
+      document.getElementById("latest").textContent = data.ver;
+    } else {
+      document.getElementById("latest").textContent = "无法获取";
+    }
+  })
+  .catch(error => {
+    console.error('获取版本信息失败:', error);
+    document.getElementById("latest").textContent = "获取失败";
+  });
+</script></span>
  * 这是 Typecho 版本的 butterfly 主题
  * 主题为移植至Typecho，你可以替换原butterfly主题的index.css文件
  * 当前适配 hexo-butterfly 4.6.0
@@ -225,6 +242,7 @@ window.addEventListener('DOMContentLoaded', function() {
     const commonSelectors = {
         'subtitle': '#subtitle',
         'activity': '#activity',
+        'search-button': '#search-button',
         'footer-wrap': '#footer-wrap'
     };
     
@@ -233,7 +251,39 @@ window.addEventListener('DOMContentLoaded', function() {
         const element = document.querySelector(selector);
         if (!element) {
             console.log(`元素未找到: ${name} (${selector})`);
+            
+            // 为了防止其他脚本尝试在这个空元素上添加事件监听器，我们可以创建一个空元素
+            if (name === 'search-button' || name === 'subtitle') {
+                // 只为关键元素创建替代品
+                const dummy = document.createElement('div');
+                dummy.id = selector.substring(1); // 移除前导#
+                dummy.style.display = 'none';
+                dummy.setAttribute('data-dummy', 'true');
+                
+                // 添加一个空的addEventListener方法，防止错误
+                dummy.addEventListener = function(event, handler) {
+                    console.log(`添加事件监听器失败，目标元素不存在: ${selector}, 事件: ${event}`);
+                    // 不做任何事情，只是防止错误
+                    return dummy;
+                };
+                
+                // 添加到body中
+                document.body.appendChild(dummy);
+                console.log(`为 ${selector} 创建了替代元素防止错误`);
+            }
         }
     }
+    
+    // 保护所有可能的addEventListener调用
+    const originalAddEventListener = Element.prototype.addEventListener;
+    Element.prototype.addEventListener = function(type, listener, options) {
+        try {
+            return originalAddEventListener.call(this, type, listener, options);
+        } catch (e) {
+            console.error(`addEventListener调用失败: ${e.message}`);
+            // 返回this以支持链式调用
+            return this;
+        }
+    };
 });
 </script>
