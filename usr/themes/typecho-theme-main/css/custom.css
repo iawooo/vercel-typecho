@@ -2209,16 +2209,23 @@ img[data-lazy-src]:not(.loaded) {
     height: auto !important;
 }
 
-/* 确保加载覆盖层在需要时能被正确隐藏 */
+/* 完全禁用加载覆盖层 */
 #loading-overlay {
-    opacity: 1;
-    pointer-events: auto;
-    transition: opacity 0.5s ease;
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    z-index: -999 !important;
+    position: absolute !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
 }
 
-#loading-overlay.hide {
-    opacity: 0 !important;
-    pointer-events: none !important;
+#loading-overlay * {
     display: none !important;
 }
 
