@@ -582,7 +582,7 @@
     <script src="<?php $this->options->themeUrl('/js/utils.js?v1.7.3'); ?>"> </script>
     <script src="<?php $this->options->themeUrl('/js/tw_cn.js?v1.7.3'); ?>"> </script>
     <!-- 使用简化版的搜索脚本替代复杂版本 -->
-    <script src="<?php $this->options->themeUrl('/js/simple-search.js?v1.0.0'); ?>"> </script>
+    <!-- <script src="<?php $this->options->themeUrl('/js/simple-search.js?v1.0.0'); ?>"> </script> -->
 
     <script src="<?php cdnBaseUrl() ?>/js/jquery.min.js"></script>
     <script src="<?php cdnBaseUrl() ?>/js/instantpage.min.js">
