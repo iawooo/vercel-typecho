@@ -181,9 +181,9 @@
             root: "/",
             algolia: void 0,
             localSearch: {
-                path: "search.xml",
+                path: "search.php",
                 languages: {
-                    hits_empty: "回车查询：${query}"
+                    hits_empty: "找不到相关内容：${query}"
                 }
             },
             translate: {
@@ -683,9 +683,9 @@
                     </a>
                 </div>
                 <div class="menus_item">
-                    <a class="site-page" id="search-button">
-                        <i class="fa-fw fas fa-search"></i>
-                        <span class="search">搜索</span>
+                    <a class="site-page" id="search-button" style="cursor: pointer; display: inline-block;">
+                        <i class="fa-fw fas fa-search" style="color: inherit;"></i>
+                        <span class="search" style="margin-left: 5px;">搜索</span>
                     </a>
                 </div>
                 <div class="menus_item">
