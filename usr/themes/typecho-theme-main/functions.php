@@ -156,45 +156,26 @@ function charactersNum($archive)
 // 全站字数统计
 function allOfCharacters()
 {
-    $showPrivate = 0;
-    $chars = 0;
     $db = Typecho_Db::get();
-    $dbType = explode('_', $db->getAdapterName())[0];
+    $dbType = explode('_', $db->getAdapterName());
+    $dbType = strtolower($dbType[0]);
     
-    try {
-        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
-            // PostgreSQL兼容语法
-            if ($showPrivate == 0) {
-                $select = $db->select('"text"')->from('table.contents')->where('status = ?', 'publish');
-            } else {
-                $select = $db->select('"text"')->from('table.contents');
-            }
-        } else {
-            if ($showPrivate == 0) {
-                $select = $db->select('text')->from('table.contents')->where('table.contents.status = ?', 'publish');
-            } else {
-                $select = $db->select('text')->from('table.contents');
-            }
-        }
-        
-        $rows = $db->fetchAll($select);
-        foreach ($rows as $row) {
-            $chars += mb_strlen($row['text'], 'UTF-8');
-        }
-        
-        $unit = '';
-        if ($chars >= 10000) {
-            $chars /= 10000;
-            $unit = 'W';
-        } else if ($chars >= 1000) {
-            $chars /= 1000;
-            $unit = 'K';
-        }
-        $out = sprintf('%.2lf %s', $chars, $unit);
-        echo $out;
-    } catch (Exception $e) {
-        echo '0'; // 出错时返回0
+    if ($dbType == 'pgsql') {
+        // PostgreSQL查询
+        $chars = $db->fetchRow($db->select('SUM(LENGTH("text")) as num')
+            ->from('table.contents')
+            ->where('"type" = ?', 'post')
+            ->where('"status" = ?', 'publish'));
+    } else {
+        // MySQL/SQLite查询
+        $chars = $db->fetchRow($db->select('SUM(LENGTH(text)) as num')
+            ->from('table.contents')
+            ->where('type = ?', 'post')
+            ->where('status = ?', 'publish'));
     }
+    
+    $count = $chars['num'];
+    return $count;
 }
 
 function thumb($cid)
@@ -1115,27 +1096,30 @@ class myyodux
 function thePrevCid($widget, $default = NULL)
 {
     $db = Typecho_Db::get();
-    $dbType = explode('_', $db->getAdapterName())[0];
+    $dbType = explode('_', $db->getAdapterName());
+    $dbType = strtolower($dbType[0]);
     
-    try {
-        $where = 'table.contents.status = "publish" AND table.contents.created < ?';
-        if ($dbType === 'Pgsql') {
-            $where = 'table.contents.status = \'publish\' AND table.contents.created < ?';
-        }
-        
-        $sql = $db->select()->from('table.contents')
-            ->where($where, $widget->created)
-            ->where('table.contents.type = ?', $widget->type)
-            ->order('table.contents.created', Typecho_Db::SORT_DESC)
-            ->limit(1);
-        $content = $db->fetchRow($sql);
-        
-        if ($content) {
-            return $content["cid"];
-        } else {
-            return $default;
-        }
-    } catch (Exception $e) {
+    if ($dbType == 'pgsql') {
+        // PostgreSQL查询
+        $result = $db->fetchRow($db->select()->from('table.contents')
+            ->where('"status" = ?', 'publish')
+            ->where('"type" = ?', 'post')
+            ->where('"created" < ?', $widget->created)
+            ->order('"created"', Typecho_Db::SORT_DESC)
+            ->limit(1));
+    } else {
+        // MySQL/SQLite查询
+        $result = $db->fetchRow($db->select()->from('table.contents')
+            ->where('status = ?', 'publish')
+            ->where('type = ?', 'post')
+            ->where('created < ?', $widget->created)
+            ->order('created', Typecho_Db::SORT_DESC)
+            ->limit(1));
+    }
+    
+    if ($result) {
+        return $result["cid"];
+    } else {
         return $default;
     }
 }
@@ -1146,27 +1130,30 @@ function thePrevCid($widget, $default = NULL)
 function theNextCid($widget, $default = NULL)
 {
     $db = Typecho_Db::get();
-    $dbType = explode('_', $db->getAdapterName())[0];
+    $dbType = explode('_', $db->getAdapterName());
+    $dbType = strtolower($dbType[0]);
     
-    try {
-        $where = 'table.contents.status = "publish" AND table.contents.created > ?';
-        if ($dbType === 'Pgsql') {
-            $where = 'table.contents.status = \'publish\' AND table.contents.created > ?';
-        }
-        
-        $sql = $db->select()->from('table.contents')
-            ->where($where, $widget->created)
-            ->where('table.contents.type = ?', $widget->type)
-            ->order('table.contents.created', Typecho_Db::SORT_ASC)
-            ->limit(1);
-        $content = $db->fetchRow($sql);
-        
-        if ($content) {
-            return $content["cid"];
-        } else {
-            return $default;
-        }
-    } catch (Exception $e) {
+    if ($dbType == 'pgsql') {
+        // PostgreSQL查询 
+        $result = $db->fetchRow($db->select()->from('table.contents')
+            ->where('"status" = ?', 'publish')
+            ->where('"type" = ?', 'post')
+            ->where('"created" > ?', $widget->created)
+            ->order('"created"', Typecho_Db::SORT_ASC)
+            ->limit(1));
+    } else {
+        // MySQL/SQLite查询
+        $result = $db->fetchRow($db->select()->from('table.contents')
+            ->where('status = ?', 'publish')
+            ->where('type = ?', 'post')
+            ->where('created > ?', $widget->created)
+            ->order('created', Typecho_Db::SORT_ASC)
+            ->limit(1));
+    }
+    
+    if ($result) {
+        return $result["cid"];
+    } else {
         return $default;
     }
 }
