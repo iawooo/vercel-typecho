@@ -950,140 +950,123 @@ function img_postthemb($thiz, $default_img)
     }
 }
 
-//  输出标签  
+/**
+* 输出当前文章分类
+*/
 function printTag($that)
-{ ?>
-    <?php if (count($that->tags) > 0) : ?>
-        <?php foreach ($that->tags as $tags) : ?>
-            <a href="<?php print($tags['permalink']) ?>" class="post-meta__tags"><span>
-                    <?php print($tags['name']) ?>
-                </span></a>
-        <?php endforeach; ?>
-    <?php else : ?>
-        <a class="post-meta__tags"><span>无标签</span></a>
-    <?php endif; ?>
-<?php }
-
-
-//当前人数
-function onlinePeople()
 {
-    $online_log = "usr/themes/butterfly/online.dat"; //保存人数的文件到根目录,
-    $timeout = 30; //30秒内没动作者,认为掉线
-    if (!file_exists($online_log)) {
-        fopen($online_log, "w");
-    }
-    $entries = file($online_log);
-    $temp = array();
-    for ($i = 0; $i < count($entries); $i++) {
-        $entry = explode(",", trim($entries[$i]));
-        if (($entry[0] != getenv('REMOTE_ADDR')) && ($entry[1] > time())) {
-            array_push($temp, $entry[0] . "," . $entry[1] . "\n"); //取出其他浏览者的信息,并去掉超时者,保存进$temp
+    if ($that->fields->customizePostTags == "open") {
+        $content = $that->fields->customTag;
+        echo trim($content);
+    } else {
+        if (count($that->tags) > 0) {
+            $result = '<ul class="post-tags">';
+            foreach ($that->tags as $tag) {
+                $result .= '<li><a href="' . $tag['permalink'] . '">#' . $tag['name'] . '</a></li>';
+            }
+            $result .= '</ul>';
+            echo trim($result);
+        } else {
+            echo '<ul class="post-tags"><li><a>#暂无标签</a></li></ul>';
         }
     }
-    array_push($temp, getenv('REMOTE_ADDR') . "," . (time() + ($timeout)) . "\n"); //更新浏览者的时间
-    $slzxrs = count($temp); //计算在线人数
-    $entries = implode("", $temp);
-    //写入文件
-    $fp = fopen($online_log, "w");
-    flock($fp, LOCK_EX); //flock() 不能在NFS以及其他的一些网络文件系统中正常工作
-    fputs($fp, $entries);
-    flock($fp, LOCK_UN);
-    fclose($fp);
-    echo $slzxrs;
 }
 
-/*
- * 无插件阅读数
+/**
+ * 统计当前在线人数
  */
-function get_post_view($archive)
-{
+function onlinePeople() {
     $db = Typecho_Db::get();
-    $cid = $archive->cid;
-    
-    // 检查数据库类型并适配不同的SQL语法
     $dbType = explode('_', $db->getAdapterName())[0];
-    $prefix = $db->getPrefix();
     
-    // 检查视图字段是否存在
-    $fieldsExist = false;
-    try {
-        // 尝试查询，看字段是否存在
-        $db->fetchRow($db->select('views')->from('table.contents')->where('cid = ?', $cid));
-        $fieldsExist = true;
-    } catch (Exception $e) {
-        $fieldsExist = false;
+    // 将在线用户的ID添加到在线列表中
+    $online_list = Typecho_Cookie::get('online_list');
+    if(empty($online_list)){
+        $online_list = array();
+    }else{
+        $online_list = explode(',', $online_list);
     }
     
-    // 如果字段不存在，为不同数据库创建兼容的ALTER语句
-    if (!$fieldsExist) {
-        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
-            // PostgreSQL语法
-            $db->query("ALTER TABLE {$prefix}contents ADD COLUMN \"views\" INT DEFAULT 0");
-        } else {
-            // MySQL/SQLite语法
-            $db->query("ALTER TABLE `{$prefix}contents` ADD `views` INT(10) DEFAULT 0");
+    // 将当前用户添加到在线列表中
+    $ipHash = crc32(Hash::generate(getIp(), 'md5'));
+    if (!in_array($ipHash, $online_list)) {
+        array_push($online_list, $ipHash);
+    }
+    
+    // 移除超时用户（5分钟未活动）
+    $now = time();
+    foreach ($online_list as $key => $value) {
+        $time = Typecho_Cookie::get('online_'.$value);
+        if ($time < $now - 300) { // 5分钟 = 300秒
+            unset($online_list[$key]);
+            Typecho_Cookie::delete('online_'.$value);
         }
     }
     
-    // 获取文章访问量
-    $viewsRow = $db->fetchRow($db->select('views')->from('table.contents')->where('cid = ?', $cid));
-    $exist = isset($viewsRow['views']) ? $viewsRow['views'] : 0;
+    // 更新在线列表和当前用户的时间
+    Typecho_Cookie::set('online_list', implode(',', $online_list));
+    Typecho_Cookie::set('online_'.$ipHash, $now);
+    
+    // 返回在线人数
+    return count($online_list);
+}
+
+/**
+ * 文章阅读量统计
+ */
+function get_post_view($archive) {
+    $db = Typecho_Db::get();
+    $dbType = explode('_', $db->getAdapterName())[0];
+    $cid = $archive->cid;
+    
+    if(!array_key_exists('views', $db->fetchRow($db->select()->from('table.contents')->page(1, 1)))) {
+        $db->query('ALTER TABLE `' . $db->getPrefix() . 'contents` ADD `views` INT(10) DEFAULT 0;');
+    }
+    
+    $row = $db->fetchRow($db->select('views')->from('table.contents')->where('cid = ?', $cid));
+    $views = $row['views'];
     
     if ($archive->is('single')) {
         $cookie = Typecho_Cookie::get('contents_views');
         $cookie = $cookie ? explode(',', $cookie) : array();
         if (!in_array($cid, $cookie)) {
-            $db->query($db->update('table.contents')
-                ->rows(array('views' => (int) $exist + 1))
-                ->where('cid = ?', $cid));
-            $exist = (int) $exist + 1;
-            array_push($cookie, $cid);
+            $views = $views + 1;
+            
+            if ($dbType === 'Pgsql') {
+                $db->query($db->update('table.contents')->rows(array('views' => $views))->where('"cid" = ?', $cid));
+            } else {
+                $db->query($db->update('table.contents')->rows(array('views' => $views))->where('cid = ?', $cid));
+            }
+            
+            $cookie[] = $cid;
             $cookie = implode(',', $cookie);
             Typecho_Cookie::set('contents_views', $cookie);
         }
     }
-    echo $exist == 0 ? '0' : ' ' . $exist;
+    
+    // 直接输出浏览次数
+    echo $views == 0 ? '0' : ' ' . $views;
 }
 
-//总访问量
-function theAllViews()
-{
+/**
+ * 获取总浏览次数
+ */
+function theAllViews() {
     $db = Typecho_Db::get();
-    
-    // 检查数据库类型
     $dbType = explode('_', $db->getAdapterName())[0];
-    $prefix = $db->getPrefix();
     
-    // 检查视图字段是否存在
-    $fieldsExist = false;
-    try {
-        // 尝试查询，看字段是否存在
-        $db->fetchRow($db->select('views')->from('table.contents')->limit(1));
-        $fieldsExist = true;
-    } catch (Exception $e) {
-        $fieldsExist = false;
+    if(!array_key_exists('views', $db->fetchRow($db->select()->from('table.contents')->page(1, 1)))) {
+        $db->query('ALTER TABLE `' . $db->getPrefix() . 'contents` ADD `views` INT(10) DEFAULT 0;');
     }
     
-    // 如果字段不存在，为不同数据库创建兼容的ALTER语句
-    if (!$fieldsExist) {
-        if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
-            // PostgreSQL语法
-            $db->query("ALTER TABLE {$prefix}contents ADD COLUMN \"views\" INT DEFAULT 0");
-        } else {
-            // MySQL/SQLite语法
-            $db->query("ALTER TABLE `{$prefix}contents` ADD `views` INT(10) DEFAULT 0");
-        }
-    }
-    
-    // 根据数据库类型使用不同的SUM查询
-    if ($dbType == 'Pgsql' || $dbType == 'Postgresql') {
-        $row = $db->fetchAll($db->select('SUM(views) AS sum_views')->from('table.contents'));
-        echo isset($row[0]['sum_views']) ? $row[0]['sum_views'] : 0;
+    if ($dbType === 'Pgsql') {
+        $row = $db->fetchRow($db->select('SUM("views") AS views')->from('table.contents'));
     } else {
-        $row = $db->fetchAll($db->select('SUM(views)')->from('table.contents'));
-        echo array_values($row[0])[0] ?: 0;
+        $row = $db->fetchRow($db->select('SUM(views) AS views')->from('table.contents'));
     }
+    
+    // 直接输出总浏览次数
+    echo isset($row['views']) ? $row['views'] : 0;
 }
 
 //  回复可见       
@@ -1103,52 +1086,68 @@ class myyodux
 }
 
 /**
- * 显示上一篇
- *
- * 如果没有下一篇,返回null
+ * 获取上一篇文章
  */
-function thePrevCid($widget, $default = NULL)
-{
+function thePrevCid($widget, $default = NULL) {
     $db = Typecho_Db::get();
-    $sql = $db->select()->from('table.contents')
-        ->where('table.contents.created < ?', $widget->created)
-        ->where('table.contents.status = ?', 'publish')
-        ->where('table.contents.type = ?', $widget->type)
-        ->where('table.contents.password IS NULL')
-        ->order('table.contents.created', Typecho_Db::SORT_DESC)
-        ->limit(1);
-    $content = $db->fetchRow($sql);
-
+    $dbType = explode('_', $db->getAdapterName())[0];
+    
+    if ($dbType === 'Pgsql') {
+        $query = $db->select()->from('table.contents')
+            ->where('"type" = ?', 'post')
+            ->where('"status" = ?', 'publish')
+            ->where('"created" < ?', $widget->created)
+            ->order('"created"', Typecho_Db::SORT_DESC)
+            ->limit(1);
+    } else {
+        $query = $db->select()->from('table.contents')
+            ->where('type = ?', 'post')
+            ->where('status = ?', 'publish')
+            ->where('created < ?', $widget->created)
+            ->order('created', Typecho_Db::SORT_DESC)
+            ->limit(1);
+    }
+    
+    $content = $db->fetchRow($query);
+    
     if ($content) {
-        return $content["cid"];
+        return $content['cid'];
     } else {
         return $default;
     }
-};
+}
 
 /**
- * 获取下一篇文章mid
- *
- * 如果没有下一篇,返回null
+ * 获取下一篇文章
  */
-function theNextCid($widget, $default = NULL)
-{
+function theNextCid($widget, $default = NULL) {
     $db = Typecho_Db::get();
-    $sql = $db->select()->from('table.contents')
-        ->where('table.contents.created > ?', $widget->created)
-        ->where('table.contents.status = ?', 'publish')
-        ->where('table.contents.type = ?', $widget->type)
-        ->where('table.contents.password IS NULL')
-        ->order('table.contents.created', Typecho_Db::SORT_ASC)
-        ->limit(1);
-    $content = $db->fetchRow($sql);
-
+    $dbType = explode('_', $db->getAdapterName())[0];
+    
+    if ($dbType === 'Pgsql') {
+        $query = $db->select()->from('table.contents')
+            ->where('"type" = ?', 'post')
+            ->where('"status" = ?', 'publish')
+            ->where('"created" > ?', $widget->created)
+            ->order('"created"', Typecho_Db::SORT_ASC)
+            ->limit(1);
+    } else {
+        $query = $db->select()->from('table.contents')
+            ->where('type = ?', 'post')
+            ->where('status = ?', 'publish')
+            ->where('created > ?', $widget->created)
+            ->order('created', Typecho_Db::SORT_ASC)
+            ->limit(1);
+    }
+    
+    $content = $db->fetchRow($query);
+    
     if ($content) {
-        return $content["cid"];
+        return $content['cid'];
     } else {
         return $default;
     }
-};
+}
 
 //调用博主最近文章更新时间
 function get_last_update()
