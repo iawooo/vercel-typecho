@@ -8,6 +8,9 @@
 
 body {
     cursor: url(/usr/themes/butterfly/img/default.cur), default;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 a,
@@ -2155,4 +2158,53 @@ pre[class*="language-"] {
 }
 #footer-wrap {
     color: var(--font-color) !important;
+}
+
+/* 修复类名错误 */
+.commcomments-info {
+    padding: 10px;
+}
+.commcomments-info > input {
+    color: var(--text-highlight-color);
+}
+.commcomments-area {
+    border: 1px solid #f0f0f0;
+    border-radius: 5px;
+}
+
+/* 确保图片清晰度 */
+img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    -ms-interpolation-mode: nearest-neighbor;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    max-width: 100%;
+    height: auto;
+}
+
+/* 修复可能的缩放问题 */
+body {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 确保页面元素渲染清晰 */
+* {
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+/* 取消图片懒加载模糊效果 */
+img[data-lazy-src]:not(.loaded) {
+    filter: none !important;
+}
+
+/* 图片自适应 */
+.post-content img,
+#article-container img {
+    display: block !important;
+    margin: 0 auto;
+    height: auto !important;
 }
