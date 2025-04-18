@@ -1044,4 +1044,335 @@ document.addEventListener("DOMContentLoaded", function () {
 
     refreshFn();
     unRefreshFn();
+
+    // 主要功能初始化和加载处理
+    initializeAll();
 });
+
+// 初始化所有功能
+function initializeAll() {
+    try {
+        console.log('正在初始化所有功能...');
+        
+        // 初始化打字效果
+        initTypingEffect();
+        
+        // 初始化主题切换
+        initThemeToggle();
+        
+        // 初始化图片懒加载
+        initLazyLoading();
+        
+        // 初始化滚动处理
+        initScrollHandling();
+        
+        // 初始化文章目录
+        initTableOfContents();
+        
+        console.log('所有功能初始化完成');
+    } catch (err) {
+        console.error('初始化功能时出错:', err);
+    }
+}
+
+/**
+ * 初始化打字效果
+ */
+function initTypingEffect() {
+    try {
+        console.log('初始化打字效果...');
+        const subtitleElement = document.getElementById('subtitle');
+        
+        if (!subtitleElement) {
+            console.warn('打字效果目标元素不存在: #subtitle');
+            return;
+        }
+        
+        // 获取要显示的字符串数组
+        let strings = [];
+        if (subtitleElement.dataset.typed) {
+            try {
+                strings = JSON.parse(subtitleElement.dataset.typed);
+            } catch (error) {
+                console.error('解析打字数据时出错:', error);
+                strings = [subtitleElement.dataset.typed]; // 作为单个字符串使用
+            }
+        }
+        
+        if (strings.length === 0) {
+            // 如果没有字符串，使用默认值
+            strings = ['默认字幕文本...'];
+        }
+        
+        // 检查Typed.js是否可用
+        if (typeof Typed !== 'undefined') {
+            new Typed('#subtitle', {
+                strings: strings,
+                startDelay: 300,
+                typeSpeed: 150,
+                loop: true,
+                backSpeed: 50
+            });
+            console.log('打字效果初始化成功');
+        } else {
+            console.warn('Typed.js未加载，无法创建打字效果');
+        }
+    } catch (error) {
+        console.error('初始化打字效果时出错:', error);
+    }
+}
+
+/**
+ * 初始化主题切换功能
+ */
+function initThemeToggle() {
+    try {
+        console.log('初始化主题切换功能...');
+        const themeToggle = document.getElementById('darkmode-toggle');
+        
+        if (!themeToggle) {
+            console.warn('主题切换按钮不存在: #darkmode-toggle');
+            return;
+        }
+        
+        // 从本地存储获取当前主题设置
+        let currentTheme = localStorage.getItem('theme');
+        if (!currentTheme) {
+            // 如果没有主题设置，检查系统偏好
+            const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+            currentTheme = prefersDarkScheme.matches ? 'dark' : 'light';
+        }
+        
+        // 应用主题
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        
+        // 更新按钮状态
+        if (currentTheme === 'dark') {
+            themeToggle.classList.add('active');
+        } else {
+            themeToggle.classList.remove('active');
+        }
+        
+        // 添加切换事件
+        themeToggle.addEventListener('click', function() {
+            // 切换主题
+            const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // 更新按钮状态
+            if (newTheme === 'dark') {
+                themeToggle.classList.add('active');
+            } else {
+                themeToggle.classList.remove('active');
+            }
+        });
+        
+        console.log('主题切换功能初始化成功');
+    } catch (error) {
+        console.error('初始化主题切换时出错:', error);
+    }
+}
+
+/**
+ * 初始化图片懒加载
+ */
+function initLazyLoading() {
+    try {
+        console.log('初始化图片懒加载...');
+        const lazyImages = document.querySelectorAll('.lazy-load');
+        
+        if (lazyImages.length === 0) {
+            console.log('没有找到需要懒加载的图片');
+            return;
+        }
+        
+        // 检查浏览器是否支持IntersectionObserver
+        if ('IntersectionObserver' in window) {
+            const imageObserver = new IntersectionObserver(function(entries, observer) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        const image = entry.target;
+                        if (image.dataset.src) {
+                            image.src = image.dataset.src;
+                            image.classList.remove('lazy-load');
+                            imageObserver.unobserve(image);
+                        }
+                    }
+                });
+            });
+            
+            lazyImages.forEach(function(image) {
+                imageObserver.observe(image);
+            });
+        } else {
+            // 回退方案：简单的基于滚动的懒加载
+            function lazyLoad() {
+                for (let i = 0; i < lazyImages.length; i++) {
+                    const image = lazyImages[i];
+                    if (image.getBoundingClientRect().top <= window.innerHeight && 
+                        image.getBoundingClientRect().bottom >= 0 && 
+                        getComputedStyle(image).display !== 'none') {
+                        if (image.dataset.src) {
+                            image.src = image.dataset.src;
+                            image.classList.remove('lazy-load');
+                        }
+                    }
+                }
+            }
+            
+            // 初始加载
+            lazyLoad();
+            
+            // 添加事件监听器
+            window.addEventListener('scroll', lazyLoad);
+            window.addEventListener('resize', lazyLoad);
+            window.addEventListener('orientationChange', lazyLoad);
+        }
+        
+        console.log('图片懒加载初始化成功');
+    } catch (error) {
+        console.error('初始化图片懒加载时出错:', error);
+    }
+}
+
+/**
+ * 初始化滚动处理
+ */
+function initScrollHandling() {
+    try {
+        console.log('初始化滚动处理...');
+        const backToTopButton = document.getElementById('back-to-top');
+        
+        if (!backToTopButton) {
+            console.warn('回到顶部按钮不存在: #back-to-top');
+            return;
+        }
+        
+        // 滚动事件处理
+        window.addEventListener('scroll', function() {
+            // 显示/隐藏回到顶部按钮
+            if (window.pageYOffset > 300) {
+                backToTopButton.classList.add('show');
+            } else {
+                backToTopButton.classList.remove('show');
+            }
+        });
+        
+        // 点击回到顶部
+        backToTopButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+        
+        console.log('滚动处理初始化成功');
+    } catch (error) {
+        console.error('初始化滚动处理时出错:', error);
+    }
+}
+
+/**
+ * 初始化文章目录
+ */
+function initTableOfContents() {
+    try {
+        console.log('初始化文章目录...');
+        const tocContainer = document.getElementById('table-of-contents');
+        
+        if (!tocContainer) {
+            console.log('目录容器不存在，跳过目录初始化');
+            return;
+        }
+        
+        // 获取文章内容区域
+        const articleContent = document.querySelector('.article-content');
+        if (!articleContent) {
+            console.warn('文章内容不存在，无法生成目录');
+            return;
+        }
+        
+        // 获取所有标题
+        const headings = articleContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        if (headings.length === 0) {
+            console.log('文章中没有找到标题，跳过目录生成');
+            return;
+        }
+        
+        // 创建目录
+        const toc = document.createElement('ul');
+        toc.className = 'toc-list';
+        
+        // 当前层级的标题和列表
+        const levels = {
+            h1: 0, h2: 0, h3: 0, h4: 0, h5: 0, h6: 0
+        };
+        
+        let prevLevel = 0;
+        let currentList = toc;
+        let listStack = [toc];
+        
+        // 遍历所有标题
+        headings.forEach(function(heading, index) {
+            // 获取标题级别
+            const level = parseInt(heading.tagName.charAt(1));
+            
+            // 如果标题没有ID，为其添加ID
+            if (!heading.id) {
+                heading.id = 'heading-' + index;
+            }
+            
+            // 创建目录项
+            const listItem = document.createElement('li');
+            const link = document.createElement('a');
+            link.href = '#' + heading.id;
+            link.textContent = heading.textContent;
+            
+            // 添加平滑滚动效果
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelector('#' + heading.id).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+            
+            listItem.appendChild(link);
+            
+            // 处理不同级别的标题
+            if (level > prevLevel) {
+                // 创建新的子列表
+                const subList = document.createElement('ul');
+                listStack[listStack.length - 1].lastChild.appendChild(subList);
+                listStack.push(subList);
+                currentList = subList;
+            } else if (level < prevLevel) {
+                // 回到上一级
+                for (let i = 0; i < prevLevel - level; i++) {
+                    listStack.pop();
+                }
+                currentList = listStack[listStack.length - 1];
+            }
+            
+            // 添加目录项
+            currentList.appendChild(listItem);
+            prevLevel = level;
+        });
+        
+        // 将目录添加到容器
+        tocContainer.appendChild(toc);
+        
+        // 切换目录显示/隐藏
+        const tocTitle = document.querySelector('.toc-title');
+        if (tocTitle) {
+            tocTitle.addEventListener('click', function() {
+                tocContainer.classList.toggle('collapsed');
+            });
+        }
+        
+        console.log('文章目录初始化成功');
+    } catch (error) {
+        console.error('初始化文章目录时出错:', error);
+    }
+}
