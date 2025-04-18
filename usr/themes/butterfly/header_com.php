@@ -684,11 +684,9 @@
                     </a>
                 </div>
                 <div class="menus_item">
-                    <a class="site-page search search-form-input search-btn" id="search-button">
+                    <a class="site-page" id="search-button">
                         <i class="fas fa-search fa-fw"></i>
-                        <form method="post" action="<?php $this->options->siteUrl(); ?>" role="search" id="dSearch" style="display:inline;">
-                            搜索
-                        </form>
+                        <span class="search">搜索</span>
                     </a>
                 </div>
                 <div class="menus_item">
