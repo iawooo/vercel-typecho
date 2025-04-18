@@ -205,18 +205,35 @@ if ($sticky && $this->is('index') || $this->is('front')) {
 </main>
 <?php $this->need('footer.php'); ?>
 <script>
-    function ver() {
-        console.log(`
-fugu基于typecho-butterfly7.9修改
-`);
+// 站点信息和版本显示
+function ver() {
+    console.log('fugu基于typecho-butterfly7.9修改');
+}
+
+// 全局错误处理
+window.addEventListener('error', function(event) {
+    // 检查是否为JSON解析错误
+    if (event.message && event.message.includes('Unexpected token')) {
+        console.error('JSON解析错误已捕获，可能是API返回了非JSON格式的数据');
+        event.preventDefault(); // 防止错误继续冒泡
     }
+});
+
+// 防止空对象引用错误
+window.addEventListener('DOMContentLoaded', function() {
+    // 修复常见的空对象引用错误
+    const commonSelectors = {
+        'subtitle': '#subtitle',
+        'activity': '#activity',
+        'footer-wrap': '#footer-wrap'
+    };
     
-    // 修复可能的JSON解析错误
-    window.addEventListener('error', function(event) {
-        // 检查是否为JSON解析错误
-        if (event.message && event.message.includes('Unexpected token')) {
-            console.error('JSON解析错误已捕获，可能是API返回了非JSON格式的数据');
-            event.preventDefault(); // 防止错误继续冒泡
+    // 检查并处理可能的空对象
+    for (const [name, selector] of Object.entries(commonSelectors)) {
+        const element = document.querySelector(selector);
+        if (!element) {
+            console.log(`元素未找到: ${name} (${selector})`);
         }
-    });
+    }
+});
 </script>
