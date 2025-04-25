@@ -1,7 +1,0 @@
-{
-    "username": "",
-    "password": "",
-    "loginUrl": "https://umami.example.com/api/auth/login",
-    "activeUsersUrl": "https://umami.example.com/api/websites/[网站ID]/active",
-    "statsUrlBase": "https://umami.example.com/api/websites/[网站ID]/stats"
-} 
