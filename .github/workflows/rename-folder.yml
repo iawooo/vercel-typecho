@@ -1,32 +1,33 @@
-name: Rename Folder
+name: Unzip File
 
 on:
   workflow_dispatch: # 手动触发工作流
     inputs:
-      old_folder: # 旧文件夹名称
-        description: 'Old folder name (e.g., old_folder)'
+      zip_file: # 压缩文件路径
+        description: 'Path to the zip file (e.g., folder/archive.zip)'
         required: true
-      new_folder: # 新文件夹名称
-        description: 'New folder name (e.g., new_folder)'
+      destination: # 解压目标路径
+        description: 'Destination folder for unzipped files (e.g., folder/unzipped)'
         required: true
 
 jobs:
-  rename-folder:
+  unzip-file:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Rename folder
+      - name: Unzip file
         run: |
-          git mv ${{ github.event.inputs.old_folder }} ${{ github.event.inputs.new_folder }}
+          unzip -o ${{ github.event.inputs.zip_file }} -d ${{ github.event.inputs.destination }}
         shell: bash
 
       - name: Commit changes
         run: |
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
-          git commit -m "Rename folder from ${{ github.event.inputs.old_folder }} to ${{ github.event.inputs.new_folder }}"
+          git add .
+          git commit -m "Unzip ${{ github.event.inputs.zip_file }} to ${{ github.event.inputs.destination }}"
           git push
         shell: bash
